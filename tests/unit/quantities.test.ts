@@ -85,11 +85,14 @@ describe("dimensional conversion", () => {
     [1, "tbsp", 14.78676478125],
     [1, "cup", 236.5882365],
     [1, "fl-oz", 29.5735295625],
-  ] as const)("converts %s %s using the exact documented metric factor", (quantity, unit, metric) => {
-    const converted = convertQuantity(quantity, unit, "metric");
-    expect(converted.quantity).toBeCloseTo(metric, 10);
-    expect(converted.unit).toBe(unit === "oz" || unit === "lb" ? "g" : "ml");
-  });
+  ] as const)(
+    "converts %s %s using the exact documented metric factor",
+    (quantity, unit, metric) => {
+      const converted = convertQuantity(quantity, unit, "metric");
+      expect(converted.quantity).toBeCloseTo(metric, 10);
+      expect(converted.unit).toBe(unit === "oz" || unit === "lb" ? "g" : "ml");
+    },
+  );
 
   it("keeps mass and volume separate and leaves counts unchanged", () => {
     expect(convertQuantity(1, "cup", "metric").unit).toBe("ml");

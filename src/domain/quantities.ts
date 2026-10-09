@@ -221,7 +221,11 @@ function parseQuantity(value: string): number | null {
     const whole = mixed[1];
     const numerator = mixed[2];
     const denominatorText = mixed[3];
-    if (whole === undefined || numerator === undefined || denominatorText === undefined) {
+    if (
+      whole === undefined ||
+      numerator === undefined ||
+      denominatorText === undefined
+    ) {
       return null;
     }
     const denominator = Number(denominatorText);
