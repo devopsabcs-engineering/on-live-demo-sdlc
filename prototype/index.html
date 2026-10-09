@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Pinch</title>
+  <style>
+    :root { color-scheme: light; --bg:#edf2ef; --card:#fff; --text:#172b21; --muted:#455d50; --action:#285c3a; --on-action:#fff; --line:#718779; --marker:#f9a620; }
+    [data-theme="dark"] { color-scheme:dark; --bg:#14231d; --card:#20352b; --text:#eff6ee; --muted:#bdcec2; --action:#c9e6af; --on-action:#14231d; --line:#829888; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 "DejaVu Sans",system-ui,sans-serif; }
+    button,input,select,textarea { font:inherit; color:inherit; }
+    button,select,input,textarea { border:1px solid var(--line); border-radius:8px; background:var(--card); }
+    button,select { min-height:44px; padding:8px 14px; }
+    button { cursor:pointer; }
+    button:hover { border-color:var(--text); }
+    button:disabled { opacity:.55; cursor:default; }
+    :focus-visible { outline:3px solid var(--action); outline-offset:3px; }
+    .primary { background:var(--action); color:var(--on-action); border-color:var(--action); font-weight:700; }
+    .skip { position:absolute; top:-100px; left:16px; background:var(--card); padding:12px; color:var(--text); z-index:10; }
+    .skip:focus { top:8px; }
+    header,main,footer { max-width:1160px; margin:auto; padding:24px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+    .brand { font:bold 36px "DejaVu Serif",Georgia,serif; letter-spacing:-1px; }
+    .tagline,.muted { color:var(--muted); }
+    .controls,.row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .preference { display:grid; gap:4px; font-size:14px; }
+    h1,h2,h3 { font-family:"DejaVu Serif",Georgia,serif; line-height:1.2; }
+    h1 { font-size:clamp(28px,4vw,44px); margin:0 0 8px; }
+    h2 { font-size:24px; margin:0 0 16px; }
+    h3 { font-size:20px; margin:24px 0 12px; }
+    p { margin:0 0 16px; }
+    .notice { border-left:5px solid var(--marker); padding:16px; background:var(--card); border-radius:4px; }
+    .library { margin:24px 0; }
+    .samples { display:flex; gap:12px; flex-wrap:wrap; }
+    .samples button[aria-pressed="true"] { background:var(--action); color:var(--on-action); border-color:var(--action); }
+    .workbench { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(0,1fr); gap:24px; align-items:start; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:24px; min-width:0; }
+    .recipe-heading { display:flex; justify-content:space-between; gap:16px; align-items:start; flex-wrap:wrap; }
+    .dial { padding:20px 0; margin:16px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+    #servings { width:70px; min-height:44px; text-align:center; font-size:22px; font-weight:bold; font-variant-numeric:tabular-nums; }
+    .dial label { font-weight:bold; margin-right:4px; }
+    ul { padding:0; margin:0; list-style:none; }
+    .ingredients li { display:grid; grid-template-columns:110px 1fr; gap:16px; padding:12px 0; border-bottom:1px solid var(--line); }
+    .amount { font-weight:700; font-variant-numeric:tabular-nums; }
+    .ingredients li.plain { display:block; }
+    li, .cook-step { overflow-wrap:anywhere; }
+    ol { padding-left:24px; }
+    ol li { padding:6px 0 6px 8px; }
+    .shopping li { padding:12px 0; border-bottom:1px solid var(--line); }
+    .shopping label { display:flex; align-items:center; gap:12px; min-height:44px; cursor:pointer; }
+    input[type="checkbox"] { width:24px; height:24px; flex-shrink:0; accent-color:var(--action); }
+    .shopping input:checked + span { text-decoration:line-through; color:var(--muted); }
+    .shopping .row { margin:16px 0; }
+    #status { min-height:2em; margin:16px 0; font-weight:600; }
+    dialog { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:18px; width:min(680px,calc(100% - 32px)); max-height:90dvh; padding:24px; }
+    dialog::backdrop { background:rgb(0 0 0 / .6); }
+    dialog label { display:block; margin:12px 0 4px; font-weight:600; }
+    dialog input,dialog textarea { width:100%; padding:10px; }
+    dialog textarea { resize:vertical; }
+    dialog .row { margin-top:24px; justify-content:space-between; }
+    #cook { width:min(900px,calc(100% - 32px)); }
+    .cook-step { font:clamp(26px,5vw,44px)/1.4 "DejaVu Serif",Georgia,serif; min-height:180px; margin:32px 0; }
+    footer { color:var(--muted); font-size:14px; }
+    [hidden] { display:none !important; }
+    @media(max-width:760px) { .workbench { grid-template-columns:1fr; } header,main,footer { padding:16px; } .card { padding:20px; } }
+    @media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; animation:none !important; transition:none !important; } }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip" data-i18n="skip">Skip to recipe</a>
+  <header>
+    <div><div class="brand">Pinch<span aria-hidden="true">.</span></div><div class="tagline" data-i18n="tagline">A little less guesswork in the kitchen.</div></div>
+    <div class="controls">
+      <label class="preference"><span data-i18n="language">Language</span><select id="language"><option value="en">English</option><option value="fr">Français</option></select></label>
+      <label class="preference"><span data-i18n="theme">Theme</span><select id="theme"><option value="light" data-i18n="light">Light</option><option value="dark" data-i18n="dark">Dark</option></select></label>
+    </div>
+  </header>
+  <main id="main" tabindex="-1">
+    <p class="notice" data-i18n="notice">Design prototype, not the finished app. Recipes and shopping reset on reload. No data is sent anywhere.</p>
+    <section class="library" aria-labelledby="library-title"><h2 id="library-title" data-i18n="library">Start with a recipe</h2><div id="samples" class="samples"></div></section>
+    <div id="status" role="status" aria-live="polite"></div>
+    <div class="workbench">
+      <section class="card" aria-labelledby="recipe-title">
+        <div class="recipe-heading"><div><h1 id="recipe-title"></h1><p class="muted" id="base-note"></p></div><button id="edit" data-i18n="edit">Edit recipe</button></div>
+        <div class="dial row">
+          <label for="servings" data-i18n="servings">Servings</label>
+          <button id="minus" data-i18n-aria="fewer" aria-label="Fewer servings">−</button>
+          <input id="servings" type="number" min="1" max="24" step="1" value="4" required>
+          <button id="plus" data-i18n-aria="more" aria-label="More servings">+</button>
+          <label for="units" data-i18n="units">Units</label>
+          <select id="units"><option value="metric" data-i18n="metric">Metric</option><option value="imperial" data-i18n="imperial">Imperial (US)</option></select>
+        </div>
+        <h2 data-i18n="ingredients">Ingredients</h2><ul id="ingredients" class="ingredients"></ul>
+        <div class="row" style="margin-top:24px"><button id="add" class="primary" data-i18n="add">Add to shopping list</button><button id="start" data-i18n="start">Start cooking</button></div>
+        <h3 data-i18n="method">Method</h3><ol id="steps"></ol>
+      </section>
+      <aside class="card shopping" aria-labelledby="shopping-title">
+        <h2 id="shopping-title" data-i18n="shopping">Shopping list</h2>
+        <p class="muted" data-i18n="shoppingHint">Add recipes at the servings you need. Matching items and units are combined.</p>
+        <p id="empty" data-i18n="empty">Nothing to buy yet. Add a recipe to get started.</p>
+        <ul id="shopping"></ul>
+        <div class="row"><button id="clear" data-i18n="clear" disabled>Clear checked</button><span id="count" class="muted"></span></div>
+      </aside>
+    </div>
+  </main>
+  <footer data-i18n="footer">Local-only spike · US volume measures · No cups-to-grams guesses · Not installable yet</footer>
+  <dialog id="editor" aria-labelledby="editor-title">
+    <form id="recipe-form">
+      <h2 id="editor-title" data-i18n="editorTitle">Recipe notebook</h2>
+      <p class="muted" data-i18n="editorHint">One ingredient per line, for example: 1 1/2 cup milk. Your own text is kept in its original language.</p>
+      <label for="name" data-i18n="name">Recipe title</label><input id="name" required maxlength="120">
+      <label for="base" data-i18n="base">Original servings</label><input id="base" type="number" min="1" max="24" step="1" required>
+      <label for="ingredient-input" data-i18n="ingredients">Ingredients</label><textarea id="ingredient-input" rows="6" required maxlength="5000"></textarea>
+      <label for="step-input" data-i18n="method">Method</label><textarea id="step-input" rows="5" required maxlength="5000"></textarea>
+      <p id="form-error" role="status"></p>
+      <div class="row"><button id="cancel" type="button" data-i18n="cancel">Cancel</button><button class="primary" type="submit" data-i18n="save">Save for this session</button></div>
+    </form>
+  </dialog>
+  <dialog id="cook" aria-labelledby="cook-title">
+    <h2 id="cook-title"></h2><p class="muted" data-i18n="sleep">This prototype does not keep your screen awake. Use your device settings if needed.</p>
+    <p id="progress" role="status"></p><p id="cook-step" class="cook-step"></p>
+    <div class="row"><button id="previous" data-i18n="previous">Previous step</button><button id="next" class="primary" data-i18n="next">Next step</button><button id="close" data-i18n="close">Close cook mode</button></div>
+  </dialog>
+  <script>
+    'use strict';
+    const strings = {
+      en: {
+        skip:'Skip to recipe', tagline:'A little less guesswork in the kitchen.', language:'Language', theme:'Theme', light:'Light', dark:'Dark',
+        notice:'Design prototype, not the finished app. Recipes and shopping reset on reload. No data is sent anywhere.',
+        library:'Start with a recipe', newRecipe:'New recipe', edit:'Edit recipe', servings:'Servings', fewer:'Fewer servings', more:'More servings',
+        units:'Units', metric:'Metric', imperial:'Imperial (US)', ingredients:'Ingredients', add:'Add to shopping list', start:'Start cooking', method:'Method',
+        shopping:'Shopping list', shoppingHint:'Add recipes at the servings you need. Matching items and units are combined.',
+        empty:'Nothing to buy yet. Add a recipe to get started.', clear:'Clear checked',
+        footer:'Local-only spike · US volume measures · No cups-to-grams guesses · Not installable yet',
+        editorTitle:'Recipe notebook', editorHint:'One ingredient per line, for example: 1 1/2 cup milk. Your own text is kept in its original language.',
+        name:'Recipe title', base:'Original servings', cancel:'Cancel', save:'Save for this session',
+        sleep:'This prototype does not keep your screen awake. Use your device settings if needed.',
+        previous:'Previous step', next:'Next step', close:'Close cook mode', original:n=>`Originally serves ${n}`,
+        step:(n,total)=>`Step ${n} of ${total}`, remaining:n=>`${n} item(s) left`, added:'Ingredients added to the shopping list.',
+        cleared:'Checked items cleared.', saved:'Recipe saved for this session.', selected:'Recipe selected.',
+        invalidServings:'Choose a whole number of servings from 1 to 24.', invalidRecipe:'Enter a title, ingredients and at least one step.',
+        scaled:n=>`Amounts updated for ${n} servings.`, storage:'Preferences cannot be saved here. Your selection still works for this session.'
+      },
+      fr: {
+        skip:'Aller à la recette', tagline:'Un peu moins de calculs en cuisine.', language:'Langue', theme:'Thème', light:'Clair', dark:'Sombre',
+        notice:'Prototype de conception, pas une application finie. Recettes et liste sont réinitialisées au rechargement. Aucune donnée n’est envoyée.',
+        library:'Choisir une recette', newRecipe:'Nouvelle recette', edit:'Modifier la recette', servings:'Portions', fewer:'Moins de portions', more:'Plus de portions',
+        units:'Unités', metric:'Métriques', imperial:'Impériales (US)', ingredients:'Ingrédients', add:'Ajouter à la liste de courses', start:'Commencer à cuisiner', method:'Préparation',
+        shopping:'Liste de courses', shoppingHint:'Ajoutez les recettes pour le nombre de portions souhaité. Les mêmes ingrédients et unités sont regroupés.',
+        empty:'Rien à acheter pour le moment. Ajoutez une recette pour commencer.', clear:'Effacer les éléments cochés',
+        footer:'Prototype local · Mesures de volume US · Pas de conversion tasse/grammes approximative · Pas encore installable',
+        editorTitle:'Carnet de recettes', editorHint:'Un ingrédient par ligne, par exemple : 1 1/2 tasse lait. Votre texte reste dans sa langue d’origine.',
+        name:'Titre de la recette', base:'Portions d’origine', cancel:'Annuler', save:'Enregistrer pour cette session',
+        sleep:'Ce prototype ne garde pas l’écran allumé. Utilisez les réglages de votre appareil si nécessaire.',
+        previous:'Étape précédente', next:'Étape suivante', close:'Fermer le mode cuisine', original:n=>`Pour ${n} portions à l’origine`,
+        step:(n,total)=>`Étape ${n} sur ${total}`, remaining:n=>`${n} élément(s) restant(s)`, added:'Ingrédients ajoutés à la liste de courses.',
+        cleared:'Éléments cochés effacés.', saved:'Recette enregistrée pour cette session.', selected:'Recette sélectionnée.',
+        invalidServings:'Choisissez un nombre entier de portions de 1 à 24.', invalidRecipe:'Saisissez un titre, des ingrédients et au moins une étape.',
+        scaled:n=>`Quantités mises à jour pour ${n} portions.`, storage:'Impossible de mémoriser les préférences ici. Votre choix reste actif pour cette session.'
+      }
+    };
+    const recipes = [
+      { id:'pancakes', base:4, title:{en:'Sunday pancakes',fr:'Crêpes du dimanche'}, ingredients:[
+        [250,'g','flour','farine'],[300,'ml','milk','lait'],[2,'','eggs','œufs'],[1,'tbsp','sugar','sucre'],[null,'','A pinch of salt','Une pincée de sel']
+      ], steps:{en:['Mix the flour, sugar and salt in a bowl.','Whisk in the milk and eggs until smooth.','Cook small pancakes in a hot pan until golden on both sides.'],
+        fr:['Mélangez la farine, le sucre et le sel dans un bol.','Incorporez le lait et les œufs au fouet jusqu’à obtenir une pâte lisse.','Faites cuire de petites crêpes dans une poêle chaude jusqu’à ce qu’elles soient dorées des deux côtés.']} },
+      { id:'soup', base:4, title:{en:'Carrot & lentil soup',fr:'Soupe carottes et lentilles'}, ingredients:[
+        [500,'g','carrots','carottes'],[200,'g','red lentils','lentilles corail'],[1000,'ml','vegetable stock','bouillon de légumes'],[1,'tbsp','olive oil','huile d’olive']
+      ], steps:{en:['Chop the carrots. Warm the oil in a saucepan.','Add the carrots, lentils and stock. Simmer for 25 minutes.','Blend to your preferred texture and season to taste.'],
+        fr:['Coupez les carottes. Faites chauffer l’huile dans une casserole.','Ajoutez les carottes, les lentilles et le bouillon. Laissez mijoter 25 minutes.','Mixez selon la texture souhaitée et assaisonnez.']} },
+      { id:'salad', base:2, title:{en:'Chickpea lunch salad',fr:'Salade de pois chiches'}, ingredients:[
+        [300,'g','cooked chickpeas','pois chiches cuits'],[200,'g','tomatoes','tomates'],[2,'tbsp','olive oil','huile d’olive'],[1,'','lemon','citron']
+      ], steps:{en:['Rinse and drain the chickpeas. Chop the tomatoes.','Toss with olive oil and lemon juice.','Taste, season and serve.'],
+        fr:['Rincez et égouttez les pois chiches. Coupez les tomates.','Mélangez avec l’huile d’olive et le jus de citron.','Goûtez, assaisonnez et servez.']} }
+    ];
+    const unitLabels = {
+      en:{g:'g',kg:'kg',ml:'ml',l:'l',oz:'oz',lb:'lb',cup:'cup',tbsp:'tbsp',tsp:'tsp'},
+      fr:{g:'g',kg:'kg',ml:'ml',l:'l',oz:'oz',lb:'lb',cup:'tasse',tbsp:'c. à soupe',tsp:'c. à café'}
+    };
+    // US customary factors. Mass and volume are separate; no density assumptions.
+    const measures = {g:['mass',1],kg:['mass',1000],oz:['mass',28.349523125],lb:['mass',453.59237],
+      ml:['volume',1],l:['volume',1000],cup:['volume',236.5882365],tbsp:['volume',14.78676478125],tsp:['volume',4.92892159375]};
+    const $ = id => document.getElementById(id);
+    let lang='en', theme='light', current=recipes[0], servings=4, units='metric', shopping=[], step=0, creating=false, editingId=null, statusKey=null, statusArgs=[];
+    let storageAvailable=true;
+    try {
+      const savedLang=localStorage.getItem('pinch-prototype-language'), savedTheme=localStorage.getItem('pinch-prototype-theme');
+      if (savedLang==='en' || savedLang==='fr') lang=savedLang;
+      if (savedTheme==='light' || savedTheme==='dark') theme=savedTheme;
+    } catch (error) { storageAvailable=false; console.warn('Pinch preferences unavailable:',error); }
+    function t(key,...args) { const value=strings[lang][key]; if(value===undefined) throw new Error(`Missing translation: ${key}`); return typeof value==='function'?value(...args):value; }
+    function localized(value) { return typeof value==='string'?value:value[lang]; }
+    function tell(key,...args) { statusKey=key; statusArgs=args; $('status').textContent=t(key,...args); }
+    function remember() {
+      try { localStorage.setItem('pinch-prototype-language',lang); localStorage.setItem('pinch-prototype-theme',theme); }
+      catch(error) { storageAvailable=false; console.warn('Pinch preferences unavailable:',error); tell('storage'); }
+    }
+    function format(value,unit='') {
+      const number=new Intl.NumberFormat(lang,{maximumFractionDigits:2});
+      if(unit==='g'||unit==='ml') return number.format(Math.round(value));
+      const quarter=Math.round(value*4)/4;
+      if(Math.abs(quarter-value)<0.015 && quarter>0) {
+        const whole=Math.floor(quarter), part=Math.round((quarter-whole)*4), fractions=['','1/4','1/2','3/4'];
+        return part ? (whole?`${number.format(whole)} `:'')+fractions[part] : number.format(whole);
+      }
+      return number.format(value);
+    }
+    function convert(quantity,unit,target) {
+      const measure=measures[unit];
+      if(!measure || !unit) return [quantity,unit];
+      if(target==='metric') {
+        if(unit==='g'||unit==='kg'||unit==='ml'||unit==='l') return [quantity,unit];
+        return [quantity*measure[1],measure[0]==='mass'?'g':'ml'];
+      }
+      if(unit==='g'||unit==='kg') return [quantity*measure[1]/measures.oz[1],'oz'];
+      if(unit==='ml'||unit==='l') return [quantity*measure[1]/measures.cup[1],'cup'];
+      return [quantity,unit];
+    }
+    function scaledIngredients() {
+      return current.ingredients.map(([q,u,en,fr])=>{
+        const [quantity,unit]=q===null?[null,u]:convert(q*servings/current.base,u,units);
+        return {quantity,unit,en,fr};
+      });
+    }
+    function itemText(item) { return lang==='fr'?item.fr:item.en; }
+    function amountText(item) { return item.quantity===null?'':`${format(item.quantity,item.unit)}${item.unit?' '+(unitLabels[lang][item.unit]||item.unit):''}`; }
+    function render() {
+      document.documentElement.lang=lang; document.documentElement.dataset.theme=theme;
+      document.title=lang==='fr'?'Pinch · Prototype de recettes':'Pinch · Recipe prototype';
+      document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n));
+      document.querySelectorAll('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.i18nAria)));
+      $('language').value=lang; $('theme').value=theme; $('units').value=units; $('servings').value=servings;
+      $('minus').disabled=servings===1; $('plus').disabled=servings===24;
+      $('recipe-title').textContent=localized(current.title); $('base-note').textContent=t('original',current.base);
+      $('samples').replaceChildren();
+      recipes.forEach(recipe=>{
+        const button=document.createElement('button'); button.textContent=localized(recipe.title);
+        button.setAttribute('aria-pressed',String(recipe===current));
+        button.onclick=()=>{ current=recipe; servings=recipe.base; render(); tell('selected'); };
+        $('samples').append(button);
+      });
+      const addRecipe=document.createElement('button'); addRecipe.textContent='+ '+t('newRecipe'); addRecipe.onclick=()=>openEditor(true); $('samples').append(addRecipe);
+      $('ingredients').replaceChildren();
+      scaledIngredients().forEach(item=>{
+        const li=document.createElement('li');
+        if(item.quantity===null) { li.className='plain'; li.textContent=itemText(item); }
+        else { const amount=document.createElement('span'), name=document.createElement('span'); amount.className='amount'; amount.textContent=amountText(item); name.textContent=itemText(item); li.append(amount,name); }
+        $('ingredients').append(li);
+      });
+      $('steps').replaceChildren();
+      localized(current.steps).forEach(text=>{ const li=document.createElement('li'); li.textContent=text; $('steps').append(li); });
+      renderShopping();
+      if(statusKey) $('status').textContent=t(statusKey,...statusArgs);
+      if($('cook').open) renderCook();
+      if($('editor').open && $('form-error').textContent) $('form-error').textContent=t('invalidRecipe');
+    }
+    function renderShopping() {
+      $('shopping').replaceChildren(); $('empty').hidden=shopping.length>0;
+      shopping.forEach(item=>{
+        const li=document.createElement('li'), label=document.createElement('label'), box=document.createElement('input'), text=document.createElement('span');
+        box.type='checkbox'; box.checked=item.checked; text.textContent=[amountText(item),itemText(item)].filter(Boolean).join(' ');
+        box.onchange=()=>{ item.checked=box.checked; updateCount(); };
+        label.append(box,text); li.append(label); $('shopping').append(li);
+      });
+      updateCount();
+    }
+    function updateCount() { $('clear').disabled=!shopping.some(item=>item.checked); $('count').textContent=shopping.length?t('remaining',shopping.filter(item=>!item.checked).length):''; }
+    function changeServings(value) {
+      if(!Number.isInteger(value)||value<1||value>24) { $('servings').value=servings; tell('invalidServings'); return; }
+      servings=value; render(); tell('scaled',servings);
+    }
+    function parseLine(line) {
+      const match=line.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:[.,]\d+)?)(?:\s+(.+))?$/);
+      if(!match || !match[2]) return [null,'',line,line];
+      const raw=match[1].replace(',','.'), parts=raw.split(/\s+/);
+      const fraction=text=>{ const [a,b]=text.split('/').map(Number); return b>0?a/b:NaN; };
+      const quantity=parts.length===2?Number(parts[0])+fraction(parts[1]):raw.includes('/')?fraction(raw):Number(raw);
+      if(!Number.isFinite(quantity)) return [null,'',line,line];
+      const rest=match[2], split=rest.match(/^(\S+)\s+(.+)$/);
+      const aliases={cups:'cup',tasse:'cup',tasses:'cup',grammes:'g',grams:'g',litre:'l',litres:'l',lbs:'lb'};
+      const token=split?split[1].toLowerCase():'', unit=aliases[token]||token;
+      if(split) return [quantity,unit,split[2],split[2]];
+      return [quantity,'',rest,rest];
+    }
+    function openEditor(isNew) {
+      creating=isNew; editingId=isNew?null:current.id; $('form-error').textContent='';
+      $('name').value=isNew?'':localized(current.title); $('base').value=isNew?4:current.base;
+      $('ingredient-input').value=isNew?'':current.ingredients.map(([q,u,en,fr])=>[q===null?'':String(q),u,lang==='fr'?fr:en].filter(Boolean).join(' ')).join('\n');
+      $('step-input').value=isNew?'':localized(current.steps).join('\n');
+      $('editor').showModal(); $('name').focus();
+    }
+    function renderCook() {
+      const steps=localized(current.steps); $('cook-title').textContent=localized(current.title);
+      $('progress').textContent=t('step',step+1,steps.length); $('cook-step').textContent=steps[step];
+      $('previous').disabled=step===0; $('next').disabled=step===steps.length-1;
+    }
+    $('language').onchange=event=>{ lang=event.target.value; render(); remember(); };
+    $('theme').onchange=event=>{ theme=event.target.value; render(); remember(); };
+    $('units').onchange=event=>{ units=event.target.value; render(); tell('scaled',servings); };
+    $('minus').onclick=()=>changeServings(servings-1); $('plus').onclick=()=>changeServings(servings+1);
+    $('servings').onchange=event=>changeServings(Number(event.target.value));
+    $('edit').onclick=()=>openEditor(false); $('cancel').onclick=()=>$('editor').close();
+    $('recipe-form').onsubmit=event=>{
+      event.preventDefault();
+      const title=$('name').value.trim(), base=Number($('base').value), ingredients=$('ingredient-input').value.split('\n').map(x=>x.trim()).filter(Boolean),
+        steps=$('step-input').value.split('\n').map(x=>x.replace(/^\s*\d+[.)]\s*/,'').trim()).filter(Boolean);
+      if(!title||!ingredients.length||!steps.length||!Number.isInteger(base)||base<1||base>24) { $('form-error').textContent=t('invalidRecipe'); return; }
+      const recipe={id:creating?`custom-${Date.now()}`:editingId,base,title,ingredients:ingredients.map(parseLine),steps};
+      if(creating) recipes.push(recipe); else recipes[recipes.findIndex(x=>x.id===editingId)]=recipe;
+      current=recipe; servings=base; $('editor').close(); render(); tell('saved');
+    };
+    $('add').onclick=()=>{
+      scaledIngredients().forEach(item=>{
+        const existing=shopping.find(x=>x.en.toLowerCase()===item.en.toLowerCase() && x.fr.toLowerCase()===item.fr.toLowerCase() && x.unit===item.unit && (x.quantity===null)===(item.quantity===null));
+        if(existing) { if(item.quantity!==null) existing.quantity+=item.quantity; existing.checked=false; }
+        else shopping.push({...item,checked:false});
+      });
+      renderShopping(); tell('added');
+    };
+    $('clear').onclick=()=>{ shopping=shopping.filter(item=>!item.checked); renderShopping(); tell('cleared'); };
+    $('start').onclick=()=>{ step=0; renderCook(); $('cook').showModal(); $('close').focus(); };
+    $('previous').onclick=()=>{ if(step>0) { step--; renderCook(); } };
+    $('next').onclick=()=>{ if(step<localized(current.steps).length-1) { step++; renderCook(); } };
+    $('close').onclick=()=>$('cook').close();
+    $('cook').onkeydown=event=>{
+      if(event.key==='ArrowLeft'||event.key==='ArrowRight') { event.preventDefault(); $(event.key==='ArrowLeft'?'previous':'next').click(); }
+    };
+    $('cook').addEventListener('close',()=>$('start').focus());
+    $('editor').addEventListener('close',()=>{ if(creating) $('samples').lastElementChild.focus(); else $('edit').focus(); });
+    render();
+    if(!storageAvailable) tell('storage');
+  </script>
+</body>
+</html>
