@@ -33,12 +33,18 @@ try {
       appDocument = parsed;
     } else {
       canPersist = false;
-      statusRegion.textContent = translate(appDocument.preferences.locale, "storedDataUnavailable");
+      statusRegion.textContent = translate(
+        appDocument.preferences.locale,
+        "storedDataUnavailable",
+      );
     }
   }
 } catch {
   canPersist = false;
-  statusRegion.textContent = translate(appDocument.preferences.locale, "preferenceSaveFailed");
+  statusRegion.textContent = translate(
+    appDocument.preferences.locale,
+    "preferenceSaveFailed",
+  );
 }
 
 function text(key: CatalogKey): string {
@@ -47,12 +53,16 @@ function text(key: CatalogKey): string {
 
 function applyTheme(): void {
   const selected = appDocument.preferences.theme;
-  const theme = selected === "system" ? (mediaPreference.matches ? "dark" : "light") : selected;
+  const theme =
+    selected === "system"
+      ? mediaPreference.matches
+        ? "dark"
+        : "light"
+      : selected;
   document.documentElement.dataset["theme"] = theme;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute(
-    "content",
-    theme === "dark" ? "#14231d" : "#edf2ef",
-  );
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute("content", theme === "dark" ? "#14231d" : "#edf2ef");
 }
 
 function render(): void {

@@ -4,7 +4,9 @@ import { join } from "node:path";
 const root = process.cwd();
 const en = JSON.parse(await readFile(join(root, "src/i18n/en.json"), "utf8"));
 const fr = JSON.parse(await readFile(join(root, "src/i18n/fr.json"), "utf8"));
-const samples = JSON.parse(await readFile(join(root, "src/data/sample-variants.json"), "utf8"));
+const samples = JSON.parse(
+  await readFile(join(root, "src/data/sample-variants.json"), "utf8"),
+);
 
 function fail(message) {
   console.error(`i18n parity: ${message}`);
@@ -22,35 +24,52 @@ function leafEntries(value, prefix = "") {
 }
 
 function placeholders(value) {
-  return [...value.matchAll(/\{([A-Za-z][A-Za-z0-9_]*)\}/g)].map((match) => match[1]).sort();
+  return [...value.matchAll(/\{([A-Za-z][A-Za-z0-9_]*)\}/g)]
+    .map((match) => match[1])
+    .sort();
 }
 
 const english = new Map(leafEntries(en));
 const french = new Map(leafEntries(fr));
 for (const key of new Set([...english.keys(), ...french.keys()])) {
-  if (!english.has(key) || !french.has(key)) fail(`missing or extra catalog key "${key}"`);
+  if (!english.has(key) || !french.has(key))
+    fail(`missing or extra catalog key "${key}"`);
   const enValue = english.get(key);
   const frValue = french.get(key);
-  if (typeof enValue !== "string" || enValue.trim() === "") fail(`empty English value for "${key}"`);
-  if (typeof frValue !== "string" || frValue.trim() === "") fail(`empty French value for "${key}"`);
+  if (typeof enValue !== "string" || enValue.trim() === "")
+    fail(`empty English value for "${key}"`);
+  if (typeof frValue !== "string" || frValue.trim() === "")
+    fail(`empty French value for "${key}"`);
   if (typeof enValue === "string" && typeof frValue === "string") {
-    if (JSON.stringify(placeholders(enValue)) !== JSON.stringify(placeholders(frValue))) {
+    if (
+      JSON.stringify(placeholders(enValue)) !==
+      JSON.stringify(placeholders(frValue))
+    ) {
       fail(`interpolation tokens differ for "${key}"`);
     }
   }
 }
 
 for (const [id, variants] of Object.entries(samples)) {
-  if (!id.startsWith("sample-") || typeof variants !== "object" || variants === null) {
+  if (
+    !id.startsWith("sample-") ||
+    typeof variants !== "object" ||
+    variants === null
+  ) {
     fail(`invalid sample variant "${id}"`);
     continue;
   }
   for (const locale of ["en", "fr"]) {
-    if (typeof variants[locale] !== "string" || variants[locale].trim() === "") {
+    if (
+      typeof variants[locale] !== "string" ||
+      variants[locale].trim() === ""
+    ) {
       fail(`sample "${id}" is missing a nonempty ${locale} variant`);
     }
   }
-  if (Object.keys(variants).some((locale) => locale !== "en" && locale !== "fr")) {
+  if (
+    Object.keys(variants).some((locale) => locale !== "en" && locale !== "fr")
+  ) {
     fail(`sample "${id}" contains an unsupported locale`);
   }
 }
@@ -79,4 +98,6 @@ for (const match of html.matchAll(/data-i18n="([^"]+)"/g)) {
 }
 
 if (process.exitCode) process.exit(process.exitCode);
-console.log(`i18n parity passed: ${english.size} catalog keys, ${Object.keys(samples).length} bilingual sample labels, static references verified`);
+console.log(
+  `i18n parity passed: ${english.size} catalog keys, ${Object.keys(samples).length} bilingual sample labels, static references verified`,
+);

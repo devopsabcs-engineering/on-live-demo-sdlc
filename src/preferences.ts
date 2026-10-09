@@ -56,7 +56,9 @@ export function parseDocument(raw: string): DocumentV1 | null {
   const saved = preferences as Record<string, unknown>;
   if (
     (saved["locale"] !== "en" && saved["locale"] !== "fr") ||
-    (saved["theme"] !== "system" && saved["theme"] !== "light" && saved["theme"] !== "dark") ||
+    (saved["theme"] !== "system" &&
+      saved["theme"] !== "light" &&
+      saved["theme"] !== "dark") ||
     (saved["units"] !== "metric" && saved["units"] !== "imperial")
   ) {
     return null;
