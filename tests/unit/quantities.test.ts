@@ -20,7 +20,13 @@ describe("ingredient quantity parsing", () => {
     ["2 fl oz cream", 2, "fl-oz", "cream"],
     ["3 scoops flour", 3, null, "scoops flour"],
   ] as const)("parses %s", (raw, quantity, unit, name) => {
-    expect(parseLine(raw)).toEqual({ kind: "parsed", raw, quantity, unit, name });
+    expect(parseLine(raw)).toEqual({
+      kind: "parsed",
+      raw,
+      quantity,
+      unit,
+      name,
+    });
   });
 
   it.each([
@@ -60,17 +66,35 @@ describe("servings scaling", () => {
     });
     if (source.kind !== "parsed") throw new Error("Expected parsed ingredient");
 
-    expect(scaleQuantity(source.quantity, 4, 8)).toEqual({ ok: true, quantity: 500 });
-    expect(scaleQuantity(source.quantity, 4, 1)).toEqual({ ok: true, quantity: 62.5 });
+    expect(scaleQuantity(source.quantity, 4, 8)).toEqual({
+      ok: true,
+      quantity: 500,
+    });
+    expect(scaleQuantity(source.quantity, 4, 1)).toEqual({
+      ok: true,
+      quantity: 62.5,
+    });
     expect(source.quantity).toBe(250);
   });
 
   it("scales counts and reports invalid quantities or servings", () => {
     expect(scaleQuantity(2, 4, 8)).toEqual({ ok: true, quantity: 4 });
-    expect(scaleQuantity(-1, 4, 8)).toEqual({ ok: false, error: "invalid-quantity" });
-    expect(scaleQuantity(1_000_001, 4, 8)).toEqual({ ok: false, error: "invalid-quantity" });
-    expect(scaleQuantity(1, 0, 8)).toEqual({ ok: false, error: "invalid-servings" });
-    expect(scaleQuantity(1, 4, 1.5)).toEqual({ ok: false, error: "invalid-servings" });
+    expect(scaleQuantity(-1, 4, 8)).toEqual({
+      ok: false,
+      error: "invalid-quantity",
+    });
+    expect(scaleQuantity(1_000_001, 4, 8)).toEqual({
+      ok: false,
+      error: "invalid-quantity",
+    });
+    expect(scaleQuantity(1, 0, 8)).toEqual({
+      ok: false,
+      error: "invalid-servings",
+    });
+    expect(scaleQuantity(1, 4, 1.5)).toEqual({
+      ok: false,
+      error: "invalid-servings",
+    });
   });
 });
 
@@ -97,7 +121,10 @@ describe("dimensional conversion", () => {
   it("keeps mass and volume separate and leaves counts unchanged", () => {
     expect(convertQuantity(1, "cup", "metric").unit).toBe("ml");
     expect(convertQuantity(1, "oz", "metric").unit).toBe("g");
-    expect(convertQuantity(2, null, "imperial")).toEqual({ quantity: 2, unit: null });
+    expect(convertQuantity(2, null, "imperial")).toEqual({
+      quantity: 2,
+      unit: null,
+    });
   });
 
   it("round-trips from the same source without accumulating display drift", () => {
@@ -105,7 +132,10 @@ describe("dimensional conversion", () => {
     const metric = convertQuantity(sourceQuantity, "cup", "metric");
     const imperial = convertQuantity(sourceQuantity, "cup", "imperial");
 
-    expect(metric).toEqual({ quantity: sourceQuantity * 236.5882365, unit: "ml" });
+    expect(metric).toEqual({
+      quantity: sourceQuantity * 236.5882365,
+      unit: "ml",
+    });
     expect(imperial.quantity).toBeCloseTo(sourceQuantity, 14);
     expect(convertQuantity(sourceQuantity, "cup", "imperial").quantity).toBe(
       imperial.quantity,

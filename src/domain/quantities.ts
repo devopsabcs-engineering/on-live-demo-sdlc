@@ -13,7 +13,13 @@ export type Unit =
   | "fl-oz";
 
 export type Ingredient =
-  | { kind: "parsed"; raw: string; quantity: number; unit: Unit | null; name: string }
+  | {
+      kind: "parsed";
+      raw: string;
+      quantity: number;
+      unit: Unit | null;
+      name: string;
+    }
   | { kind: "text"; raw: string };
 
 export type ScaleError = "invalid-quantity" | "invalid-servings";
@@ -88,7 +94,13 @@ export function parseLine(raw: string): Ingredient {
       ({ alias: candidate }) => candidate.toLocaleLowerCase("en-US") === alias,
     )?.unit;
     if (knownUnit) {
-      return { kind: "parsed", raw, quantity, unit: knownUnit, name: unitMatch[2].trim() };
+      return {
+        kind: "parsed",
+        raw,
+        quantity,
+        unit: knownUnit,
+        name: unitMatch[2].trim(),
+      };
     }
   }
 
@@ -100,11 +112,7 @@ export function scaleQuantity(
   baseServings: number,
   targetServings: number,
 ): ScaleResult {
-  if (
-    !Number.isFinite(quantity) ||
-    quantity < 0 ||
-    quantity > 1_000_000
-  ) {
+  if (!Number.isFinite(quantity) || quantity < 0 || quantity > 1_000_000) {
     return { ok: false, error: "invalid-quantity" };
   }
 
@@ -149,7 +157,11 @@ export function convertQuantity(
   return { quantity, unit };
 }
 
-export function formatQuantity(quantity: number, unit: Unit | null, locale: Locale): string {
+export function formatQuantity(
+  quantity: number,
+  unit: Unit | null,
+  locale: Locale,
+): string {
   if (!Number.isFinite(quantity) || quantity < 0) {
     throw new RangeError("Quantity must be a finite, nonnegative number.");
   }
@@ -158,16 +170,17 @@ export function formatQuantity(quantity: number, unit: Unit | null, locale: Loca
   if (quantity === 0) return new Intl.NumberFormat(numberLocale).format(0);
 
   if (unit === "g" || unit === "ml") {
-    if (quantity < 1) return `< ${new Intl.NumberFormat(numberLocale).format(1)}`;
-    return new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 0 }).format(
-      Math.floor(quantity + 0.5),
-    );
+    if (quantity < 1)
+      return `< ${new Intl.NumberFormat(numberLocale).format(1)}`;
+    return new Intl.NumberFormat(numberLocale, {
+      maximumFractionDigits: 0,
+    }).format(Math.floor(quantity + 0.5));
   }
 
   if (quantity < 0.01) {
-    const threshold = new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 2 }).format(
-      0.01,
-    );
+    const threshold = new Intl.NumberFormat(numberLocale, {
+      maximumFractionDigits: 2,
+    }).format(0.01);
     return `< ${threshold}`;
   }
 
@@ -182,7 +195,9 @@ export function formatQuantity(quantity: number, unit: Unit | null, locale: Loca
       : `${new Intl.NumberFormat(numberLocale).format(fraction.whole)} ${fractionText}`;
   }
 
-  return new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 2 }).format(quantity);
+  return new Intl.NumberFormat(numberLocale, {
+    maximumFractionDigits: 2,
+  }).format(quantity);
 }
 
 export function formatUnit(unit: Unit | null, locale: Locale): string {
@@ -254,7 +269,9 @@ function unicodeFraction(value: string): number {
   return 0.75;
 }
 
-function nearestFraction(quantity: number):
+function nearestFraction(
+  quantity: number,
+):
   | { whole: number; numerator: number; denominator: number; error: number }
   | undefined {
   const whole = Math.floor(quantity);
@@ -276,9 +293,15 @@ function nearestFraction(quantity: number):
     if (
       !best ||
       error < best.error - Number.EPSILON ||
-      (Math.abs(error - best.error) < Number.EPSILON && denominator < best.denominator)
+      (Math.abs(error - best.error) < Number.EPSILON &&
+        denominator < best.denominator)
     ) {
-      best = { whole: candidateWhole, numerator, denominator: reducedDenominator, error };
+      best = {
+        whole: candidateWhole,
+        numerator,
+        denominator: reducedDenominator,
+        error,
+      };
     }
   }
 
