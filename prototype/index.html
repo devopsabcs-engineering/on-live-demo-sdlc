@@ -183,7 +183,7 @@
     const measures = {g:['mass',1],kg:['mass',1000],oz:['mass',28.349523125],lb:['mass',453.59237],
       ml:['volume',1],l:['volume',1000],cup:['volume',236.5882365],tbsp:['volume',14.78676478125],tsp:['volume',4.92892159375]};
     const $ = id => document.getElementById(id);
-    let lang='en', theme='light', current=recipes[0], servings=4, units='metric', shopping=[], step=0, creating=false, editingId=null, statusKey=null, statusArgs=[];
+    let lang='en', theme='light', current=recipes[0], servings=4, units='metric', shopping=[], step=0, creating=false, editingId=null, editorReturn=null, statusKey=null, statusArgs=[];
     let storageAvailable=true;
     try {
       const savedLang=localStorage.getItem('pinch-prototype-language'), savedTheme=localStorage.getItem('pinch-prototype-theme');
@@ -199,7 +199,7 @@
     }
     function format(value,unit='') {
       const number=new Intl.NumberFormat(lang,{maximumFractionDigits:2});
-      if(unit==='g'||unit==='ml') return number.format(Math.round(value));
+      if(unit==='g'||unit==='ml') return value>0&&value<0.5?'< 1':number.format(Math.round(value));
       const quarter=Math.round(value*4)/4;
       if(Math.abs(quarter-value)<0.015 && quarter>0) {
         const whole=Math.floor(quarter), part=Math.round((quarter-whole)*4), fractions=['','1/4','1/2','3/4'];
@@ -238,7 +238,10 @@
       recipes.forEach(recipe=>{
         const button=document.createElement('button'); button.textContent=localized(recipe.title);
         button.setAttribute('aria-pressed',String(recipe===current));
-        button.onclick=()=>{ current=recipe; servings=recipe.base; render(); tell('selected'); };
+        button.onclick=()=>{
+          current=recipe; servings=recipe.base; render(); tell('selected');
+          $('samples').children[recipes.indexOf(recipe)].focus();
+        };
         $('samples').append(button);
       });
       const addRecipe=document.createElement('button'); addRecipe.textContent='+ '+t('newRecipe'); addRecipe.onclick=()=>openEditor(true); $('samples').append(addRecipe);
@@ -285,7 +288,7 @@
       return [quantity,'',rest,rest];
     }
     function openEditor(isNew) {
-      creating=isNew; editingId=isNew?null:current.id; $('form-error').textContent='';
+      creating=isNew; editingId=isNew?null:current.id; editorReturn=document.activeElement; $('form-error').textContent='';
       $('name').value=isNew?'':localized(current.title); $('base').value=isNew?4:current.base;
       $('ingredient-input').value=isNew?'':current.ingredients.map(([q,u,en,fr])=>[q===null?'':String(q),u,lang==='fr'?fr:en].filter(Boolean).join(' ')).join('\n');
       $('step-input').value=isNew?'':localized(current.steps).join('\n');
@@ -310,6 +313,8 @@
       const recipe={id:creating?`custom-${Date.now()}`:editingId,base,title,ingredients:ingredients.map(parseLine),steps};
       if(creating) recipes.push(recipe); else recipes[recipes.findIndex(x=>x.id===editingId)]=recipe;
       current=recipe; servings=base; $('editor').close(); render(); tell('saved');
+      editorReturn=creating?$('samples').children[recipes.indexOf(recipe)]:$('edit');
+      editorReturn.focus();
     };
     $('add').onclick=()=>{
       scaledIngredients().forEach(item=>{
@@ -328,7 +333,9 @@
       if(event.key==='ArrowLeft'||event.key==='ArrowRight') { event.preventDefault(); $(event.key==='ArrowLeft'?'previous':'next').click(); }
     };
     $('cook').addEventListener('close',()=>$('start').focus());
-    $('editor').addEventListener('close',()=>{ if(creating) $('samples').lastElementChild.focus(); else $('edit').focus(); });
+    $('editor').addEventListener('close',()=>{
+      (editorReturn?.isConnected?editorReturn:$('edit')).focus();
+    });
     render();
     if(!storageAvailable) tell('storage');
   </script>
