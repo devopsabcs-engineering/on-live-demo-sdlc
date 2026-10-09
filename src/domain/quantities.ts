@@ -82,7 +82,7 @@ export function parseLine(raw: string): Ingredient {
   }
 
   const unitMatch = unitPattern.exec(suffix);
-  if (unitMatch) {
+  if (unitMatch?.[1] !== undefined && unitMatch[2] !== undefined) {
     const alias = unitMatch[1].toLocaleLowerCase("en-US");
     const knownUnit = aliasesByLength.find(
       ({ alias: candidate }) => candidate.toLocaleLowerCase("en-US") === alias,
@@ -210,22 +210,33 @@ function parseQuantity(value: string): number | null {
   const trimmed = value.trim();
   const unicodeMixed = /^(\d+)\s+([¼½¾])$/u.exec(trimmed);
   if (unicodeMixed) {
-    const fraction = unicodeFraction(unicodeMixed[2]);
-    return Number(unicodeMixed[1]) + fraction;
+    const whole = unicodeMixed[1];
+    const fraction = unicodeMixed[2];
+    if (whole === undefined || fraction === undefined) return null;
+    return Number(whole) + unicodeFraction(fraction);
   }
 
   const mixed = /^(\d+)\s+(\d+)\/(\d+)$/u.exec(trimmed);
   if (mixed) {
-    const denominator = Number(mixed[3]);
+    const whole = mixed[1];
+    const numerator = mixed[2];
+    const denominatorText = mixed[3];
+    if (whole === undefined || numerator === undefined || denominatorText === undefined) {
+      return null;
+    }
+    const denominator = Number(denominatorText);
     if (denominator === 0) return null;
-    return Number(mixed[1]) + Number(mixed[2]) / denominator;
+    return Number(whole) + Number(numerator) / denominator;
   }
 
   const fraction = /^(\d+)\/(\d+)$/u.exec(trimmed);
   if (fraction) {
-    const denominator = Number(fraction[2]);
+    const numerator = fraction[1];
+    const denominatorText = fraction[2];
+    if (numerator === undefined || denominatorText === undefined) return null;
+    const denominator = Number(denominatorText);
     if (denominator === 0) return null;
-    return Number(fraction[1]) / denominator;
+    return Number(numerator) / denominator;
   }
 
   if (/^[¼½¾]$/u.test(trimmed)) return unicodeFraction(trimmed);
