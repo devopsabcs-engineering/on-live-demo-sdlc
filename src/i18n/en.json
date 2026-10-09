@@ -1,0 +1,17 @@
+{
+  "skipToContent": "Skip to content",
+  "languageLabel": "Language",
+  "english": "English",
+  "french": "French",
+  "appearanceLabel": "Appearance",
+  "systemTheme": "System",
+  "lightTheme": "Light",
+  "darkTheme": "Dark",
+  "workbenchKicker": "YOUR KITCHEN WORKBENCH",
+  "workbenchTitle": "Recipes, in good measure.",
+  "workbenchCopy": "A little more room for the good parts.",
+  "workbenchNote": "Your recipe space is ready.",
+  "preferenceSaved": "Preferences saved on this device.",
+  "preferenceSaveFailed": "Preferences could not be saved. Changes last for this session only.",
+  "storedDataUnavailable": "Saved Pinch data could not be read. Existing data was left untouched."
+}

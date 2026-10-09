@@ -191,7 +191,7 @@
       if (savedTheme==='light' || savedTheme==='dark') theme=savedTheme;
     } catch (error) { storageAvailable=false; console.warn('Pinch preferences unavailable:',error); }
     function t(key,...args) { const value=strings[lang][key]; if(value===undefined) throw new Error(`Missing translation: ${key}`); return typeof value==='function'?value(...args):value; }
-    function localized(value) { return typeof value==='string'?value:value[lang]; }
+    function localized(value) { return typeof value==='string'||Array.isArray(value)?value:value[lang]; }
     function tell(key,...args) { statusKey=key; statusArgs=args; $('status').textContent=t(key,...args); }
     function remember() {
       try { localStorage.setItem('pinch-prototype-language',lang); localStorage.setItem('pinch-prototype-theme',theme); }
@@ -330,6 +330,7 @@
     $('next').onclick=()=>{ if(step<localized(current.steps).length-1) { step++; renderCook(); } };
     $('close').onclick=()=>$('cook').close();
     $('cook').onkeydown=event=>{
+      if(event.key==='Escape') { event.preventDefault(); $('cook').close(); return; }
       if(event.key==='ArrowLeft'||event.key==='ArrowRight') { event.preventDefault(); $(event.key==='ArrowLeft'?'previous':'next').click(); }
     };
     $('cook').addEventListener('close',()=>$('start').focus());

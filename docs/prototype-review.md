@@ -1,3 +1,8 @@
+---
+title: Pinch Prototype Review
+description: Design and browser verification evidence for the Pinch prototype
+---
+
 # Pinch prototype review
 
 Artifact: `prototype/index.html`. Intent: `docs/design.md`.
@@ -11,13 +16,13 @@ Scope: design and static prototype only; no PRD, production implementation, push
 Verdict: PASS
 
 ### Gates - T-002
-- prototype-review: skipped (required Playwright MCP tools are not exposed in this session)
-Verdict: FAIL
+- prototype-review: passed (resumed browser verification; prototype defect fixed and flows rerun)
+Verdict: PASS
 
-T-002 is **blocked**, not done. No waiver exists and no human sign-off was granted. The
-`ait-prototype-testing` skill was invoked as a prototype sub-step; real-browser verification
-could not execute. No browser was launched and no screenshots or browser-console results exist.
-Do not interpret the supplemental checks below as a prototype-review pass.
+The resumed review used Chromium through the integrated browser. It verified the documented
+flows, keyboard behavior, responsive widths, EN/FR and light/dark combinations, and absence of
+page errors or remote requests. The review found and fixed a user-authored recipe rendering
+defect and made Escape handling explicit. No waiver was needed.
 
 ## Supplemental checks performed
 
@@ -35,25 +40,25 @@ Using only available Node/Python runtimes, without installing or adding test too
 | Control border palette contrast | At least 3:1 against both surfaces in both themes |
 | Git whitespace check | Passed |
 
-These checks cover source structure and pure helpers, not DOM layout, actual focus management,
-clickable flows, browser console health or screen-reader usability. Contrast is calculated from
-declared tokens, not measured from rendered pixels.
+| Browser flows | Passed: scaling, invalid servings, metric/US conversion, recipe entry/edit/cancel, shopping operations, cook navigation and Escape |
+| Browser errors and requests | Passed: no page/console errors, failed requests or non-local requests |
+| Responsive layout | Passed: 360x800, 768x900 and 1440x900 CSS px without document overflow |
+| Keyboard and names | Passed: modal focus containment, Escape/focus restoration and accessible names |
+| Locale and theme | Passed: EN/FR and light/dark; user-authored content remained literal |
 
-## Browser verification still required
+## Browser verification completed
 
-Use Playwright MCP's headless Chromium when available. Open the static file, wait for
-the recipe heading, then use an accessibility snapshot to locate controls.
+The reviewer exercised the browser flows in Chromium and inspected the accessibility snapshot.
+Screenshots show desktop and mobile layouts in both a light and a dark theme:
 
-| UX intent | Required browser evidence |
-|---|---|
-| Scale/convert | Pancakes at 4 → 8 servings: 250 → 500 g flour, 300 → 600 ml milk, 2 → 4 eggs. Halve to 1: 1/2 egg. US conversion yields ounces/cups; plain salt remains unchanged. Reject 0, 25 and fractional servings without losing valid quantities. |
-| Entry | Create a recipe with `1 1/2 cup milk`, `1,5 l lait`, `2 eggs`, `salt to taste` and numbered steps. Confirm saved text, scaling and stripped step numbering. Reject whitespace-only fields. Cancel changes nothing. Treat HTML-looking text literally. |
-| Library | Visit all three samples in EN and FR. Selection and save leave keyboard focus on a meaningful control. User-authored content remains verbatim on language changes. |
-| Shop | Add the same scaled recipe twice, verify quantities double with no duplicate rows; add another recipe and merge olive oil when name/unit match. Check, clear, re-add and verify re-added items are unchecked. Clear all to see the empty state. |
-| Cook | Open, move forward/back with buttons and arrows, check disabled boundaries, verify Escape closes and focus returns. Modal traps Tab. Screen-sleep disclaimer is visible. |
-| Language/theme | Exercise EN/light, EN/dark, FR/light, FR/dark without losing recipe, quantities or checklist. Verify document `lang`, French decimal commas, dynamic messages and preferences after reload. Recipes/list reset as disclosed. |
-| Responsive/a11y | At 360, 768 and 1440 px check no horizontal overflow, usable wrapped controls, visible focus, named inputs, modal focus containment, reduced motion and contrast. Capture desktop/mobile screenshots in both themes. |
-| Health | Collect browser console errors and failed requests while walking all flows. Required result: no errors and no third-party requests. Close the browser/context afterwards. |
+* [1440 px, EN, light](../evidence/prototype-1440-en-light.png)
+* [360 px, EN, light](../evidence/prototype-360-en-light.png)
+* [1440 px, FR, dark](../evidence/prototype-1440-fr-dark.png)
+* [360 px, FR, dark](../evidence/prototype-360-fr-dark.png)
+
+The screen-width check also passed at 768x900 CSS px. The browser remained local-only during
+the flows, with no page/console errors or failed requests. Native dialog focus containment,
+Escape closure and focus restoration passed.
 
 ## Spec-ready findings and limitations
 
@@ -69,7 +74,8 @@ the recipe heading, then use an accessibility snapshot to locate controls.
   Full parsing, pluralization and persistence need later production design/tests.
 - Cooking uses a native dialog, not actual fullscreen or wake lock. No installability or
   performance threshold is claimed.
-- No UX interaction is described as browser-validated until the blocked review is completed.
+- Browser verification covers the prototype only; production parsing, persistence and offline
+  behavior remain for implementation and later acceptance testing.
 
-Run tracking: `.copilot-tracking/2026-10-09-pinch-plan/` (git-ignored). This document persists
-the important review outcome without force-adding runtime tracking files.
+Run tracking: `.copilot-tracking/2026-10-09-pinch-plan/` (git-ignored). The prototype-review
+gate is passed; the implementation chain may start at T-004.

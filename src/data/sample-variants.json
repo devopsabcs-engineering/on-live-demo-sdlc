@@ -1,0 +1,14 @@
+{
+  "sample-pancakes": {
+    "en": "Pancakes",
+    "fr": "Crêpes"
+  },
+  "sample-soup": {
+    "en": "Soup",
+    "fr": "Soupe"
+  },
+  "sample-salad": {
+    "en": "Salad",
+    "fr": "Salade"
+  }
+}

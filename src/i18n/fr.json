@@ -1,0 +1,17 @@
+{
+  "skipToContent": "Aller au contenu",
+  "languageLabel": "Langue",
+  "english": "Anglais",
+  "french": "Français",
+  "appearanceLabel": "Apparence",
+  "systemTheme": "Système",
+  "lightTheme": "Clair",
+  "darkTheme": "Sombre",
+  "workbenchKicker": "VOTRE PLAN DE TRAVAIL",
+  "workbenchTitle": "Des recettes à la bonne mesure.",
+  "workbenchCopy": "Un peu plus de place pour les bons moments.",
+  "workbenchNote": "Votre espace cuisine est prêt.",
+  "preferenceSaved": "Préférences enregistrées sur cet appareil.",
+  "preferenceSaveFailed": "Préférences non enregistrées. Les changements durent cette session.",
+  "storedDataUnavailable": "Données Pinch illisibles. Les données existantes sont intactes."
+}

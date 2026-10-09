@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#edf2ef" />
+    <title>Pinch</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main" data-i18n="skipToContent">Skip to content</a>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Pinch">
+        <span class="brand-mark" aria-hidden="true">P</span>
+        <span>Pinch</span>
+      </a>
+      <div class="preferences">
+        <label class="preference-control" for="locale">
+          <span data-i18n="languageLabel">Language</span>
+          <select id="locale" name="locale">
+            <option value="en" data-i18n="english">English</option>
+            <option value="fr" data-i18n="french">French</option>
+          </select>
+        </label>
+        <label class="preference-control" for="theme">
+          <span data-i18n="appearanceLabel">Appearance</span>
+          <select id="theme" name="theme">
+            <option value="system" data-i18n="systemTheme">System</option>
+            <option value="light" data-i18n="lightTheme">Light</option>
+            <option value="dark" data-i18n="darkTheme">Dark</option>
+          </select>
+        </label>
+      </div>
+    </header>
+    <main id="main" tabindex="-1">
+      <section class="workbench" aria-labelledby="workbench-title">
+        <p class="workbench-kicker" data-i18n="workbenchKicker">YOUR KITCHEN WORKBENCH</p>
+        <h1 id="workbench-title" data-i18n="workbenchTitle">Recipes, in good measure.</h1>
+        <p class="workbench-copy" data-i18n="workbenchCopy">
+          A little more room for the good parts.
+        </p>
+        <div class="measure-rule" aria-hidden="true"><span></span></div>
+        <p class="workbench-note" data-i18n="workbenchNote">
+          Your recipe space is ready.
+        </p>
+      </section>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

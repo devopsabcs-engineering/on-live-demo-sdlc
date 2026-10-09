@@ -1,2 +1,6 @@
 .copilot-tracking/
 evidence/logs/
+node_modules/
+dist/
+playwright-report/
+test-results/
