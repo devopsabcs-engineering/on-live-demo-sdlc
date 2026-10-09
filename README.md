@@ -16,3 +16,12 @@ wake lock, swipe navigation, durable recipe/list storage or JSON import/export.
 See [design direction](docs/design.md) and [prototype review](docs/prototype-review.md).
 The browser-review gate is **blocked** because Playwright MCP was unavailable in the authoring
 session; static checks are not a substitute for browser evidence.
+
+## Production specification
+
+The [PRD](docs/product/prd.md) defines numbered requirements and acceptance criteria.
+The [architecture](docs/architecture/overview.md) includes data/module contracts, binding
+ADRs and the seven pending build slices T-004-T-010.
+The [spec review](docs/architecture/spec-review.md) records the documentation gate.
+Production implementation has not started; the blocked prototype-review still prevents Build.
+The supplied GitHub Pages destination must also be verified before any future release.
