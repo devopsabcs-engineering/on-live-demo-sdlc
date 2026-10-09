@@ -18,6 +18,10 @@ if (!localeControl || !themeControl || !status) {
   throw new Error("The Pinch shell is missing a required control.");
 }
 
+const localeSelect = localeControl;
+const themeSelect = themeControl;
+const statusRegion = status;
+
 let appDocument = createDefaultDocument(navigator.language);
 let canPersist = true;
 
@@ -29,12 +33,12 @@ try {
       appDocument = parsed;
     } else {
       canPersist = false;
-      status.textContent = translate(appDocument.preferences.locale, "storedDataUnavailable");
+      statusRegion.textContent = translate(appDocument.preferences.locale, "storedDataUnavailable");
     }
   }
 } catch {
   canPersist = false;
-  status.textContent = translate(appDocument.preferences.locale, "preferenceSaveFailed");
+  statusRegion.textContent = translate(appDocument.preferences.locale, "preferenceSaveFailed");
 }
 
 function text(key: CatalogKey): string {
@@ -58,10 +62,10 @@ function render(): void {
     const key = element.dataset["i18n"] as CatalogKey | undefined;
     if (key) element.textContent = text(key);
   });
-  localeControl.value = appDocument.preferences.locale;
-  themeControl.value = appDocument.preferences.theme;
-  localeControl.setAttribute("aria-label", text("languageLabel"));
-  themeControl.setAttribute("aria-label", text("appearanceLabel"));
+  localeSelect.value = appDocument.preferences.locale;
+  themeSelect.value = appDocument.preferences.theme;
+  localeSelect.setAttribute("aria-label", text("languageLabel"));
+  themeSelect.setAttribute("aria-label", text("appearanceLabel"));
   applyTheme();
 }
 
@@ -77,30 +81,30 @@ function updatePreference<K extends keyof DocumentV1["preferences"]>(
   if (canPersist) {
     try {
       localStorage.setItem(DOCUMENT_KEY, JSON.stringify(appDocument));
-      status.textContent = text("preferenceSaved");
+      statusRegion.textContent = text("preferenceSaved");
     } catch {
       canPersist = false;
-      status.textContent = text("preferenceSaveFailed");
+      statusRegion.textContent = text("preferenceSaveFailed");
     }
   } else {
-    status.textContent = text("preferenceSaveFailed");
+    statusRegion.textContent = text("preferenceSaveFailed");
   }
   render();
 }
 
-localeControl.addEventListener("change", () => {
-  if (localeControl.value === "en" || localeControl.value === "fr") {
-    updatePreference("locale", localeControl.value as Locale);
+localeSelect.addEventListener("change", () => {
+  if (localeSelect.value === "en" || localeSelect.value === "fr") {
+    updatePreference("locale", localeSelect.value as Locale);
   }
 });
 
-themeControl.addEventListener("change", () => {
+themeSelect.addEventListener("change", () => {
   if (
-    themeControl.value === "system" ||
-    themeControl.value === "light" ||
-    themeControl.value === "dark"
+    themeSelect.value === "system" ||
+    themeSelect.value === "light" ||
+    themeSelect.value === "dark"
   ) {
-    updatePreference("theme", themeControl.value as ThemePreference);
+    updatePreference("theme", themeSelect.value as ThemePreference);
   }
 });
 
