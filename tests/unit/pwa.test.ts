@@ -1,13 +1,16 @@
 import vm from "node:vm";
 import { inflateSync } from "node:zlib";
-import type { OutputBundle } from "rollup";
 import { describe, expect, it, vi } from "vitest";
-import { createIcon, createShell } from "../../scripts/pwa.mjs";
+import {
+  createIcon,
+  createShell,
+  type ShellBundle,
+} from "../../scripts/pwa.mjs";
 import { OfflineShell } from "../../src/offline";
 
 const base = "/ai-sdlc-labs-pinch/";
 const origin = "https://pinch.test";
-function bundle(content = "shell"): OutputBundle {
+function bundle(content = "shell"): ShellBundle {
   return {
     "index.html": { type: "asset", fileName: "index.html", source: content },
     "assets/main-hash.js": {
@@ -20,7 +23,7 @@ function bundle(content = "shell"): OutputBundle {
       fileName: "assets/main-hash.css",
       source: content,
     },
-  } as OutputBundle;
+  };
 }
 
 function workerFixture() {
@@ -124,9 +127,7 @@ describe("emitted offline shell", () => {
       first.cachePrefix,
     );
     expect(() => createShell(bundle(), "https://remote.test/")).toThrow();
-    expect(() => createShell({} as OutputBundle, base)).toThrow(
-      "Missing emitted",
-    );
+    expect(() => createShell({}, base)).toThrow("Missing emitted");
   });
 });
 

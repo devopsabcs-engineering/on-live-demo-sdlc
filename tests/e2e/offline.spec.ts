@@ -1,9 +1,8 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
-import type { OutputBundle } from "rollup";
 import { expect, test, type Page } from "@playwright/test";
-import { createShell } from "../../scripts/pwa.mjs";
+import { createShell, type ShellBundle } from "../../scripts/pwa.mjs";
 
 const base = "/ai-sdlc-labs-pinch/";
 const documentKey = "pinch:v1:document";
@@ -37,6 +36,8 @@ test("built Chromium shell is installable with local PNGs, emitted assets and ba
   const cdp = await context.newCDPSession(page);
   const manifest = await cdp.send("Page.getAppManifest");
   expect(manifest.errors).toEqual([]);
+  if (!manifest.data)
+    throw new Error("Chromium did not load the local manifest");
   const parsed = JSON.parse(manifest.data);
   expect(parsed).toMatchObject({
     name: "Pinch",
@@ -197,7 +198,7 @@ for (const locale of ["en", "fr"] as const) {
 }
 
 async function updateServer() {
-  const output: OutputBundle = {};
+  const output: ShellBundle = {};
   for (const name of await readdir(resolve("dist"), { recursive: true })) {
     if (name === "sw.js" || !(await stat(resolve("dist", name))).isFile())
       continue;
@@ -206,7 +207,7 @@ async function updateServer() {
       type: "asset",
       fileName,
       source: await readFile(resolve("dist", name)),
-    } as OutputBundle[string];
+    };
   }
   function version(label: string) {
     const index = output["index.html"];
