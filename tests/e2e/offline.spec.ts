@@ -101,14 +101,21 @@ for (const locale of ["en", "fr"] as const) {
   }) => {
     const requests: string[] = [];
     const errors: string[] = [];
+    const failedRequests: string[] = [];
     context.on("request", (request) => requests.push(request.url()));
+    context.on("requestfailed", (request) =>
+      failedRequests.push(`${request.url()}: ${request.failure()?.errorText}`),
+    );
     page.on("pageerror", (error) => errors.push(error.message));
     await installed(page);
     await page.evaluate(() => localStorage.setItem("foreign-app", "keep"));
     const cacheNames = await page.evaluate(() => caches.keys());
     await context.setOffline(true);
     await page.reload();
-    await expect(page.locator("#library button")).toHaveCount(3);
+    await expect(
+      page.locator("#library button"),
+      JSON.stringify({ errors, failedRequests }),
+    ).toHaveCount(3);
     await page.locator("#locale").selectOption(locale);
     await page.locator("#theme").selectOption("dark");
     await page.locator("#new-recipe").click();
