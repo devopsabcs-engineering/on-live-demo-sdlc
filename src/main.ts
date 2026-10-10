@@ -4,6 +4,7 @@ import { DOCUMENT_KEY, type DocumentV1, type UserRecipe } from "./preferences";
 import { RecipeRepository } from "./data/repository";
 import { getSample, sampleIds } from "./data/samples";
 import { mergeShopping, type ShoppingSnapshot } from "./domain/shopping";
+import { CookSession, cookStep, swipeStep } from "./cook-session";
 import {
   validateDraft,
   type RecipeField,
@@ -33,6 +34,13 @@ const editor = required<HTMLElement>("#editor");
 const temporaryButton = required<HTMLButtonElement>("#temporary-session");
 const newButton = required<HTMLButtonElement>("#new-recipe");
 const editButton = required<HTMLButtonElement>("#edit-recipe");
+const cookButton = required<HTMLButtonElement>("#start-cooking");
+const cookDialog = required<HTMLDialogElement>("#cook-dialog");
+const cookLocale = required<HTMLSelectElement>("#cook-locale");
+const cookScroll = required<HTMLElement>("#cook-scroll");
+const cookPrevious = required<HTMLButtonElement>("#cook-previous");
+const cookNext = required<HTMLButtonElement>("#cook-next");
+const cookClose = required<HTMLButtonElement>("#close-cooking");
 const mediaPreference = window.matchMedia("(prefers-color-scheme: dark)");
 const repository = new RecipeRepository(navigator.language, () => localStorage);
 let appDocument = repository.document;
@@ -44,6 +52,23 @@ let statusKey: CatalogKey | null = null;
 let temporarySession = false;
 let targetInvalid = false;
 let fieldErrors: Partial<Record<RecipeField, RecipeFieldError>> = {};
+let cookingStep = 0;
+let swipe: { id: number; x: number; y: number; vertical: number } | null = null;
+const fullscreenTarget = document.documentElement;
+const cooking = new CookSession(
+  {
+    ...(navigator.wakeLock
+      ? { requestWakeLock: () => navigator.wakeLock.request("screen") }
+      : {}),
+    ...(typeof fullscreenTarget.requestFullscreen === "function"
+      ? { requestFullscreen: () => fullscreenTarget.requestFullscreen() }
+      : {}),
+    hasFullscreen: () => document.fullscreenElement !== null,
+    ownsFullscreen: () => document.fullscreenElement === fullscreenTarget,
+    exitFullscreen: () => document.exitFullscreen(),
+  },
+  renderCooking,
+);
 
 const fields = {
   title: required<HTMLInputElement>("#recipe-name"),
@@ -273,7 +298,150 @@ function render(): void {
   renderRecipe();
   renderShopping();
   renderMessages();
+  renderCooking();
 }
+
+function renderCooking(): void {
+  if (!cookDialog.open) return;
+  const recipe = getSelectedRecipe();
+  required<HTMLElement>("#cook-title").textContent = recipe.title;
+  required<HTMLElement>("#cook-progress").textContent = text("cookProgress")
+    .replace("{current}", String(cookingStep + 1))
+    .replace("{total}", String(recipe.steps.length));
+  required<HTMLElement>("#cook-step").textContent =
+    recipe.steps[cookingStep] ?? "";
+  cookLocale.value = appDocument.preferences.locale;
+  for (const [control, key] of [
+    [cookClose, "closeCooking"],
+    [cookPrevious, "previousStep"],
+    [cookNext, "nextStep"],
+  ] as const) {
+    control.setAttribute("aria-label", text(key));
+    control.title = text(key);
+  }
+  cookScroll.setAttribute("aria-label", text("stepsLabel"));
+  required<HTMLElement>(".cook-navigation").setAttribute(
+    "aria-label",
+    text("stepsLabel"),
+  );
+  cookPrevious.disabled = cookingStep === 0;
+  cookNext.disabled = cookingStep === recipe.steps.length - 1;
+  required<HTMLElement>("#cook-feedback").textContent = [
+    cooking.fullscreenUnavailable ? text("fullscreenUnavailable") : "",
+    cooking.wakeUnavailable ? text("wakeUnavailable") : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function navigateCooking(delta: number): void {
+  if (!cookDialog.open) return;
+  const next = cookStep(cookingStep, delta, getSelectedRecipe().steps.length);
+  if (next === cookingStep) return;
+  cookingStep = next;
+  renderCooking();
+  cookScroll.scrollTop = 0;
+  if (document.activeElement === cookPrevious && cookPrevious.disabled)
+    cookNext.focus();
+  if (document.activeElement === cookNext && cookNext.disabled)
+    cookPrevious.focus();
+}
+
+function closeCooking(): void {
+  cooking.close();
+  swipe = null;
+  if (cookDialog.open) cookDialog.close();
+  document.body.classList.remove("cooking");
+  cookButton.focus();
+}
+
+cookButton.addEventListener("click", () => {
+  if (!editor.hidden || cookDialog.open) return;
+  cookingStep = 0;
+  cookDialog.showModal();
+  document.body.classList.add("cooking");
+  cookScroll.scrollTop = 0;
+  cooking.open(document.visibilityState === "visible");
+  cookClose.focus();
+});
+cookClose.addEventListener("click", closeCooking);
+cookDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closeCooking();
+});
+cookDialog.addEventListener("close", () => {
+  if (!cookDialog.open) closeCooking();
+});
+cookPrevious.addEventListener("click", () => navigateCooking(-1));
+cookNext.addEventListener("click", () => navigateCooking(1));
+cookLocale.addEventListener("change", () => {
+  if (cookLocale.value === "en" || cookLocale.value === "fr")
+    updatePreference("locale", cookLocale.value);
+});
+cookDialog.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeCooking();
+  } else if (event.key === "Tab") {
+    const controls = Array.from(
+      cookDialog.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), select, [tabindex="0"]',
+      ),
+    );
+    const index = controls.indexOf(document.activeElement as HTMLElement);
+    const next = event.shiftKey
+      ? (index - 1 + controls.length) % controls.length
+      : (index + 1) % controls.length;
+    event.preventDefault();
+    controls[next]?.focus();
+  } else if (
+    !(event.target instanceof HTMLSelectElement) &&
+    (event.key === "ArrowLeft" || event.key === "ArrowRight")
+  ) {
+    event.preventDefault();
+    navigateCooking(event.key === "ArrowRight" ? 1 : -1);
+  }
+});
+cookScroll.addEventListener("pointerdown", (event) => {
+  if (!event.isPrimary || event.button !== 0) {
+    swipe = null;
+    return;
+  }
+  swipe = {
+    id: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    vertical: 0,
+  };
+});
+cookScroll.addEventListener("pointermove", (event) => {
+  if (swipe?.id === event.pointerId)
+    swipe.vertical = Math.max(
+      swipe.vertical,
+      Math.abs(event.clientY - swipe.y),
+    );
+});
+cookScroll.addEventListener("pointerup", (event) => {
+  if (swipe?.id !== event.pointerId) return;
+  navigateCooking(
+    swipeStep(
+      event.clientX - swipe.x,
+      Math.max(swipe.vertical, Math.abs(event.clientY - swipe.y)),
+    ),
+  );
+  swipe = null;
+});
+cookScroll.addEventListener("pointercancel", () => {
+  swipe = null;
+});
+document.addEventListener("visibilitychange", () => {
+  swipe = null;
+  cooking.setVisible(document.visibilityState === "visible");
+});
+window.addEventListener("pagehide", () => cooking.setVisible(false));
+window.addEventListener("pageshow", () =>
+  cooking.setVisible(document.visibilityState === "visible"),
+);
 
 function commit(next: DocumentV1, success: CatalogKey): boolean {
   const result = repository.save(next);
@@ -316,6 +484,7 @@ function openEditor(copySelected: boolean): void {
   editor.hidden = false;
   newButton.disabled = true;
   editButton.disabled = true;
+  cookButton.disabled = true;
   renderLibrary();
   renderMessages();
   fields.title.focus();
@@ -325,6 +494,7 @@ function closeEditor(): void {
   editor.hidden = true;
   newButton.disabled = false;
   editButton.disabled = false;
+  cookButton.disabled = false;
   fieldErrors = {};
   renderLibrary();
   renderMessages();

@@ -425,6 +425,115 @@ textarea {
   color: var(--muted);
 }
 
+body.cooking {
+  overflow: hidden;
+}
+
+#cook-dialog {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+#cook-dialog::backdrop {
+  background: var(--canvas);
+}
+
+.cook-layout {
+  display: grid;
+  height: 100%;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.cook-header,
+.cook-footer {
+  padding: 16px 24px;
+}
+
+.cook-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cook-header h2 {
+  flex: 1 1 180px;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: Georgia, "DejaVu Serif", serif;
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.cook-header .preference-control {
+  min-width: 100px;
+}
+
+#close-cooking,
+.cook-navigation button {
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  font-size: 24px;
+}
+
+.cook-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y pinch-zoom;
+  padding: 24px max(24px, calc((100% - 960px) / 2));
+}
+
+.cook-scroll:focus-visible {
+  outline-offset: -4px;
+}
+
+.cook-progress {
+  margin: 0 0 24px;
+  color: var(--action);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.cook-step {
+  margin: 0;
+  font-family: Georgia, "DejaVu Serif", serif;
+  font-size: 32px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.cook-footer {
+  border-top: 1px solid var(--border);
+}
+
+#cook-feedback {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.cook-navigation {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-top: 12px;
+}
+
 @media (max-width: 600px) {
   .topbar {
     align-items: flex-start;
