@@ -1,16 +1,7 @@
 import type { Locale, UnitSystem } from "../preferences";
 
 export type Unit =
-  | "g"
-  | "kg"
-  | "oz"
-  | "lb"
-  | "ml"
-  | "l"
-  | "tsp"
-  | "tbsp"
-  | "cup"
-  | "fl-oz";
+  "g" | "kg" | "oz" | "lb" | "ml" | "l" | "tsp" | "tbsp" | "cup" | "fl-oz";
 
 export type Ingredient =
   | {
@@ -25,8 +16,7 @@ export type Ingredient =
 export type ScaleError = "invalid-quantity" | "invalid-servings";
 
 export type ScaleResult =
-  | { ok: true; quantity: number }
-  | { ok: false; error: ScaleError };
+  { ok: true; quantity: number } | { ok: false; error: ScaleError };
 
 export interface ConvertedQuantity {
   quantity: number;
