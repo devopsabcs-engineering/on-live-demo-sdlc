@@ -186,6 +186,26 @@
           <ul id="shopping-list"></ul>
         </section>
       </section>
+      <section aria-labelledby="data-heading">
+        <h2 id="data-heading" data-i18n="dataLabel">Device data</h2>
+        <div class="editor-actions">
+          <button id="export-data" type="button" data-i18n="exportData">
+            Export JSON
+          </button>
+          <button id="import-data" type="button" data-i18n="importData">
+            Import JSON
+          </button>
+          <input
+            id="import-file"
+            type="file"
+            accept=".json,application/json"
+            hidden
+          />
+          <button id="reset-data" type="button" data-i18n="resetData">
+            Clear Pinch data
+          </button>
+        </div>
+      </section>
       <p
         id="storage-warning"
         class="status"

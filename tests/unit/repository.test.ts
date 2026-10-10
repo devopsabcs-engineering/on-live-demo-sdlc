@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { RecipeRepository } from "../../src/data/repository";
-import { DOCUMENT_KEY } from "../../src/preferences";
+import {
+  createDefaultDocument,
+  DOCUMENT_KEY,
+  MAX_DOCUMENT_BYTES,
+} from "../../src/preferences";
 import type { ShoppingItem } from "../../src/preferences";
 import { mergeShopping } from "../../src/domain/shopping";
 import {
@@ -17,6 +21,11 @@ function fixture(raw: string | null = null) {
     setItem: (_key: string, value: string) => {
       if (fail) throw new DOMException("Full", "QuotaExceededError");
       stored = value;
+    },
+    removeItem: (key: string) => {
+      expect(key).toBe(DOCUMENT_KEY);
+      if (fail) throw new DOMException("Denied", "SecurityError");
+      stored = null;
     },
   };
   const repository = new RecipeRepository("en", () => storage);
@@ -101,6 +110,349 @@ describe("transactional document storage", () => {
     other.repository.storageChanged();
     expect(other.repository.save(other.repository.document).ok).toBe(false);
     expect(DOCUMENT_KEY).toBe("pinch:v1:document");
+  });
+});
+
+describe("confirmed JSON transfer and recovery", () => {
+  const recipe = {
+    id: "user-transfer",
+    title: "Soupe <b>maison</b>",
+    baseServings: 4,
+    ingredients: [parseLine("1/3 g farine"), parseLine("sel au goût")],
+    steps: ["Mélanger"],
+  };
+  const item = {
+    kind: "parsed" as const,
+    id: "item-transfer",
+    name: "farine",
+    quantity: 1 / 3,
+    unit: "g" as const,
+    checked: true,
+  };
+  const document = {
+    ...createDefaultDocument("fr"),
+    userRecipes: [recipe],
+    shopping: [item],
+  };
+
+  it("downloads only schema-v1 user state and imports by replacement without seeding samples", () => {
+    const source = fixture();
+    source.repository.save(document);
+    const raw = source.repository.exportRaw();
+    const target = fixture(
+      JSON.stringify({
+        ...createDefaultDocument("en"),
+        shopping: [
+          { kind: "text", id: "item-old", raw: "old", checked: false },
+        ],
+      }),
+    );
+    expect(target.repository.importRaw(raw, true)).toMatchObject({
+      ok: true,
+      saved: true,
+      document,
+    });
+    expect(target.repository.document).toEqual(document);
+    expect(JSON.parse(target.raw() ?? "")).toEqual(document);
+    expect(raw).not.toContain("sample-");
+    expect(new RecipeRepository("en", () => target.storage).document).toEqual(
+      document,
+    );
+  });
+
+  it("does nothing on cancelled import or reset, including error and raw recovery state", () => {
+    for (const raw of [
+      null,
+      JSON.stringify(document),
+      "broken-json",
+      '{"schemaVersion":2}',
+    ]) {
+      const context = fixture(raw);
+      const old = context.repository.document;
+      const error = context.repository.error;
+      expect(
+        context.repository.importRaw(JSON.stringify(document), false),
+      ).toBeNull();
+      expect(context.repository.reset(false)).toBeNull();
+      expect(context.repository.document).toBe(old);
+      expect(context.repository.error).toBe(error);
+      expect(context.raw()).toBe(raw);
+    }
+  });
+
+  const invalid = [
+    ["invalid JSON", "{"],
+    ["version", JSON.stringify({ ...document, schemaVersion: 2 })],
+    ["root extras", JSON.stringify({ ...document, samples: [] })],
+    [
+      "preference extras",
+      JSON.stringify({
+        ...document,
+        preferences: { ...document.preferences, extra: true },
+      }),
+    ],
+    [
+      "recipe extras",
+      JSON.stringify({
+        ...document,
+        userRecipes: [{ ...recipe, extra: true }],
+      }),
+    ],
+    [
+      "ingredient extras",
+      JSON.stringify({
+        ...document,
+        userRecipes: [
+          {
+            ...recipe,
+            ingredients: [{ ...parseLine("1 g flour"), extra: true }],
+          },
+        ],
+      }),
+    ],
+    [
+      "shopping extras",
+      JSON.stringify({ ...document, shopping: [{ ...item, extra: true }] }),
+    ],
+    [
+      "duplicate recipes",
+      JSON.stringify({ ...document, userRecipes: [recipe, recipe] }),
+    ],
+    ["duplicate rows", JSON.stringify({ ...document, shopping: [item, item] })],
+    [
+      "reserved ID",
+      JSON.stringify({
+        ...document,
+        userRecipes: [{ ...recipe, id: "sample-pancakes" }],
+      }),
+    ],
+    [
+      "fractional servings",
+      JSON.stringify({
+        ...document,
+        userRecipes: [{ ...recipe, baseServings: 1.5 }],
+      }),
+    ],
+    [
+      "zero servings",
+      JSON.stringify({
+        ...document,
+        userRecipes: [{ ...recipe, baseServings: 0 }],
+      }),
+    ],
+    [
+      "negative quantity",
+      JSON.stringify({ ...document, shopping: [{ ...item, quantity: -1 }] }),
+    ],
+    [
+      "overflow quantity",
+      JSON.stringify({
+        ...document,
+        shopping: [{ ...item, quantity: 1_000_001 }],
+      }),
+    ],
+    [
+      "nonfinite quantity",
+      JSON.stringify({
+        ...document,
+        shopping: [{ ...item, quantity: "overflow" }],
+      }).replace('"overflow"', "1e309"),
+    ],
+    [
+      "numeric string",
+      JSON.stringify({ ...document, shopping: [{ ...item, quantity: "1" }] }),
+    ],
+    [
+      "raw parsed mismatch",
+      JSON.stringify({
+        ...document,
+        userRecipes: [
+          {
+            ...recipe,
+            ingredients: [{ ...parseLine("1 g flour"), quantity: 2 }],
+          },
+        ],
+      }),
+    ],
+    [
+      "title limit",
+      JSON.stringify({
+        ...document,
+        userRecipes: [{ ...recipe, title: "a".repeat(201) }],
+      }),
+    ],
+    [
+      "ingredient line limit",
+      JSON.stringify({
+        ...document,
+        userRecipes: [
+          { ...recipe, ingredients: [{ kind: "text", raw: "a".repeat(501) }] },
+        ],
+      }),
+    ],
+    [
+      "ingredient count limit",
+      JSON.stringify({
+        ...document,
+        userRecipes: [
+          {
+            ...recipe,
+            ingredients: Array.from({ length: 201 }, () => parseLine("salt")),
+          },
+        ],
+      }),
+    ],
+    [
+      "step length limit",
+      JSON.stringify({
+        ...document,
+        userRecipes: [{ ...recipe, steps: ["a".repeat(2001)] }],
+      }),
+    ],
+    [
+      "step count limit",
+      JSON.stringify({
+        ...document,
+        userRecipes: [
+          { ...recipe, steps: Array.from({ length: 101 }, () => "Mix") },
+        ],
+      }),
+    ],
+    [
+      "recipe count limit",
+      JSON.stringify({
+        ...document,
+        userRecipes: Array.from({ length: 101 }, (_, index) => ({
+          ...recipe,
+          id: `user-${index}`,
+        })),
+      }),
+    ],
+    [
+      "shopping count limit",
+      JSON.stringify({
+        ...document,
+        shopping: Array.from({ length: 1001 }, (_, index) => ({
+          ...item,
+          id: `item-${index}`,
+        })),
+      }),
+    ],
+  ];
+  it.each(invalid)(
+    "rejects %s without changing document, error or stored bytes",
+    (_name, raw) => {
+      const context = fixture(JSON.stringify(document));
+      const old = context.repository.document;
+      expect(context.repository.importRaw(raw ?? "", true)).toEqual({
+        ok: false,
+        error: "invalid-document",
+      });
+      expect(context.repository.document).toBe(old);
+      expect(context.repository.error).toBeNull();
+      expect(context.raw()).toBe(JSON.stringify(document));
+    },
+  );
+
+  it("enforces the UTF-8 byte boundary, not JavaScript character count", () => {
+    const raw = JSON.stringify(document);
+    const context = fixture();
+    const bounded =
+      raw +
+      " ".repeat(MAX_DOCUMENT_BYTES - new TextEncoder().encode(raw).length);
+    expect(context.repository.importRaw(bounded, true)?.ok).toBe(true);
+    const old = context.repository.document;
+    const bytes = context.raw();
+    const oversized = "é".repeat(MAX_DOCUMENT_BYTES / 2 + 1);
+    expect(oversized.length).toBeLessThan(MAX_DOCUMENT_BYTES);
+    expect(context.repository.importRaw(oversized, true)).toEqual({
+      ok: false,
+      error: "limit-exceeded",
+    });
+    expect(context.repository.document).toBe(old);
+    expect(context.raw()).toBe(bytes);
+  });
+
+  it("preserves prior state on import write or reset removal failure", () => {
+    const context = fixture(JSON.stringify(document));
+    const old = context.repository.document;
+    context.fail();
+    expect(
+      context.repository.importRaw(
+        JSON.stringify(createDefaultDocument("en")),
+        true,
+      ),
+    ).toEqual({ ok: false, error: "storage-full" });
+    expect(context.repository.reset(true)).toEqual({
+      ok: false,
+      error: "storage-unavailable",
+    });
+    expect(context.repository.document).toBe(old);
+    expect(context.repository.error).toBeNull();
+    expect(context.raw()).toBe(JSON.stringify(document));
+  });
+
+  it("exports exact corrupt/unsupported bytes and only resets after successful removal", () => {
+    for (const raw of ["broken-json\n é", '{"schemaVersion":99,"keep":"é"}']) {
+      const context = fixture(raw);
+      expect(context.repository.exportRaw()).toBe(raw);
+      const failing = fixture(raw);
+      failing.fail();
+      const old = failing.repository.document;
+      const error = failing.repository.error;
+      expect(failing.repository.reset(true)?.ok).toBe(false);
+      expect(failing.repository.document).toBe(old);
+      expect(failing.repository.error).toBe(error);
+      expect(failing.repository.exportRaw()).toBe(raw);
+      expect(context.repository.reset(true)).toEqual({
+        ok: true,
+        saved: true,
+        document: createDefaultDocument("en"),
+      });
+      expect(context.raw()).toBeNull();
+      expect(context.repository.error).toBeNull();
+      expect(context.repository.save(context.repository.document).ok).toBe(
+        true,
+      );
+    }
+  });
+
+  it("removes only Pinch's key and restores browser-derived defaults without writing seeds", () => {
+    const data = new Map([
+      [DOCUMENT_KEY, JSON.stringify(document)],
+      ["foreign", "keep"],
+    ]);
+    const repository = new RecipeRepository("fr-CA", () => ({
+      getItem: (key) => data.get(key) ?? null,
+      setItem: (key, value) => {
+        data.set(key, value);
+      },
+      removeItem: (key) => {
+        data.delete(key);
+      },
+    }));
+    expect(repository.reset(true)?.ok).toBe(true);
+    expect(repository.document).toEqual(createDefaultDocument("fr-CA"));
+    expect([...data]).toEqual([["foreign", "keep"]]);
+  });
+
+  it("does not erase another tab's changed bytes or pretend denied storage was reset", () => {
+    const context = fixture();
+    const old = context.repository.document;
+    context.replace("other tab");
+    expect(context.repository.reset(true)).toEqual({
+      ok: false,
+      error: "storage-conflict",
+    });
+    expect(context.repository.document).toBe(old);
+    expect(context.raw()).toBe("other tab");
+    const denied = new RecipeRepository("en", () => {
+      throw Error("denied");
+    });
+    expect(denied.reset(true)).toEqual({
+      ok: false,
+      error: "storage-unavailable",
+    });
   });
 });
 

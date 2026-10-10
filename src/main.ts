@@ -1,6 +1,12 @@
 import "./styles.css";
 import { isCatalogKey, translate, type CatalogKey } from "./i18n";
-import { DOCUMENT_KEY, type DocumentV1, type UserRecipe } from "./preferences";
+import {
+  DOCUMENT_KEY,
+  MAX_DOCUMENT_BYTES,
+  parseDocument,
+  type DocumentV1,
+  type UserRecipe,
+} from "./preferences";
 import { RecipeRepository } from "./data/repository";
 import { getSample, sampleIds } from "./data/samples";
 import { mergeShopping, type ShoppingSnapshot } from "./domain/shopping";
@@ -126,6 +132,12 @@ function renderMessages(): void {
       : "";
   temporaryButton.hidden =
     repository.error !== "storage-unavailable" || temporarySession;
+  required<HTMLButtonElement>("#export-data").textContent = text(
+    repository.error === "corrupt-data" ||
+      repository.error === "unsupported-version"
+      ? "exportRecovery"
+      : "exportData",
+  );
   required<HTMLElement>("#target-error").textContent = targetInvalid
     ? text("servings-error")
     : "";
@@ -500,6 +512,101 @@ function closeEditor(): void {
   renderMessages();
   editorOpener.focus();
 }
+
+function applyReplacement(next: DocumentV1, success: CatalogKey): void {
+  appDocument = next;
+  selectedRecipeId = sampleIds[0] ?? "sample-pancakes";
+  targetServings = getSelectedRecipe().baseServings;
+  targetInvalid = false;
+  editingId = null;
+  for (const field of fieldOrder) fields[field].value = "";
+  closeEditor();
+  statusKey = success;
+  render();
+}
+
+required<HTMLButtonElement>("#export-data").addEventListener("click", () => {
+  let url: string | null = null;
+  try {
+    const recovery =
+      repository.error === "corrupt-data" ||
+      repository.error === "unsupported-version";
+    url = URL.createObjectURL(
+      new Blob([repository.exportRaw()], {
+        type: "application/json;charset=utf-8",
+      }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = recovery ? "pinch-recovery.json" : "pinch-v1.json";
+    link.click();
+    statusKey = "dataExported";
+  } catch {
+    statusKey = "exportFailed";
+  } finally {
+    const downloadUrl = url;
+    if (downloadUrl) setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+    renderMessages();
+  }
+});
+
+const importFile = required<HTMLInputElement>("#import-file");
+required<HTMLButtonElement>("#import-data").addEventListener("click", () =>
+  importFile.click(),
+);
+importFile.addEventListener("change", async () => {
+  const file = importFile.files?.[0];
+  importFile.value = "";
+  if (!file) return;
+  if (file.size > MAX_DOCUMENT_BYTES) {
+    statusKey = "limit-exceeded";
+    renderMessages();
+    return;
+  }
+  let raw: string;
+  try {
+    raw = new TextDecoder("utf-8", { fatal: true }).decode(
+      await file.arrayBuffer(),
+    );
+  } catch {
+    statusKey = "importReadFailed";
+    renderMessages();
+    return;
+  }
+  if (!parseDocument(raw)) {
+    statusKey = "invalid-document";
+    renderMessages();
+    return;
+  }
+  const result = repository.importRaw(
+    raw,
+    window.confirm(text("confirmImport")),
+  );
+  if (!result) return;
+  if (result.ok) {
+    applyReplacement(
+      result.document,
+      result.saved ? "dataImported" : "temporaryNotice",
+    );
+    required<HTMLButtonElement>("#import-data").focus();
+  } else {
+    statusKey = result.error;
+    renderMessages();
+  }
+});
+
+required<HTMLButtonElement>("#reset-data").addEventListener("click", () => {
+  const result = repository.reset(window.confirm(text("confirmReset")));
+  if (!result) return;
+  if (result.ok) {
+    temporarySession = false;
+    applyReplacement(result.document, "dataReset");
+    required<HTMLButtonElement>("#reset-data").focus();
+  } else {
+    statusKey = result.error;
+    renderMessages();
+  }
+});
 
 newButton.addEventListener("click", () => openEditor(false));
 editButton.addEventListener("click", () => openEditor(true));

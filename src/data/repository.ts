@@ -17,7 +17,8 @@ export type StorageError =
 export type SaveResult =
   | { ok: true; document: DocumentV1; saved: boolean }
   | { ok: false; error: StorageError };
-type StoragePort = Pick<Storage, "getItem" | "setItem">;
+type StoragePort = Pick<Storage, "getItem" | "setItem"> &
+  Partial<Pick<Storage, "removeItem">>;
 
 export class RecipeRepository {
   document: DocumentV1;
@@ -25,8 +26,10 @@ export class RecipeRepository {
   private lastRaw: string | null = null;
   private temporary = false;
   private storage: StoragePort | null = null;
+  private browserLocale: string;
 
   constructor(browserLocale: string, getStorage: () => StoragePort) {
+    this.browserLocale = browserLocale;
     this.document = createDefaultDocument(browserLocale);
     try {
       this.storage = getStorage();
@@ -63,6 +66,39 @@ export class RecipeRepository {
 
   storageChanged(): void {
     if (!this.temporary) this.error = "storage-conflict";
+  }
+
+  exportRaw(): string {
+    return this.error === "corrupt-data" || this.error === "unsupported-version"
+      ? (this.lastRaw ?? "")
+      : JSON.stringify(this.document);
+  }
+
+  importRaw(raw: string, confirmed: boolean): SaveResult | null {
+    if (!confirmed) return null;
+    if (new TextEncoder().encode(raw).length > MAX_DOCUMENT_BYTES)
+      return { ok: false, error: "limit-exceeded" };
+    const next = parseDocument(raw);
+    if (!next) return { ok: false, error: "invalid-document" };
+    return this.save(next);
+  }
+
+  reset(confirmed: boolean): SaveResult | null {
+    if (!confirmed) return null;
+    try {
+      if (!this.storage?.removeItem)
+        return { ok: false, error: "storage-unavailable" };
+      if (this.storage.getItem(DOCUMENT_KEY) !== this.lastRaw)
+        return { ok: false, error: "storage-conflict" };
+      this.storage.removeItem(DOCUMENT_KEY);
+      this.lastRaw = null;
+      this.document = createDefaultDocument(this.browserLocale);
+      this.error = null;
+      this.temporary = false;
+      return { ok: true, document: this.document, saved: true };
+    } catch {
+      return { ok: false, error: "storage-unavailable" };
+    }
   }
 
   save(next: DocumentV1): SaveResult {
