@@ -27,6 +27,19 @@ test("three samples scale from base, convert without drift, and reload without d
   await expect(page.locator("#recipe-ingredients li").first()).toContainText(
     "500 g",
   );
+  await expect(page.locator("#recipe-ingredients li").nth(1)).toContainText(
+    "600 ml",
+  );
+  await expect(page.locator("#recipe-ingredients li").nth(2)).toContainText(
+    "4 eggs",
+  );
+  await page.locator("#target-servings").fill("1");
+  await page.locator("#target-servings").press("Tab");
+  await expect(page.locator("#recipe-ingredients li").nth(2)).toContainText(
+    "1/2 eggs",
+  );
+  await page.locator("#target-servings").fill("8");
+  await page.locator("#target-servings").press("Tab");
   await page.locator("#units").selectOption("imperial");
   await expect(page.locator("#recipe-ingredients li").first()).toContainText(
     "oz",

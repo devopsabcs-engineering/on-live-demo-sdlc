@@ -1,10 +1,67 @@
 import { describe, expect, it } from "vitest";
+import { spawnSync } from "node:child_process";
+import {
+  cpSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   createDefaultDocument,
   MAX_DOCUMENT_BYTES,
   parseDocument,
 } from "../../src/preferences";
 import { parseLine } from "../../src/domain/quantities";
+
+describe("catalog parity acceptance", () => {
+  it("rejects missing, extra, empty and mismatched-token French keys before build", () => {
+    const directory = mkdtempSync(join(tmpdir(), "pinch-parity-"));
+    try {
+      for (const path of ["src", "scripts", "index.html", "package.json"])
+        cpSync(path, join(directory, path), { recursive: true });
+      const catalogPath = join(directory, "src/i18n/fr.json");
+      const original = JSON.parse(readFileSync(catalogPath, "utf8")) as Record<
+        string,
+        string
+      >;
+      const run = () =>
+        spawnSync(
+          process.execPath,
+          [join(directory, "scripts/check-i18n.mjs")],
+          { cwd: directory, encoding: "utf8" },
+        );
+      expect(run().status).toBe(0);
+      for (const change of ["missing", "extra", "empty", "tokens"]) {
+        const catalog = { ...original };
+        if (change === "missing") delete catalog["french"];
+        if (change === "extra") catalog["unexpected"] = "Unexpected";
+        if (change === "empty") catalog["french"] = " ";
+        if (change === "tokens") catalog["french"] = "French {unexpected}";
+        writeFileSync(catalogPath, JSON.stringify(catalog));
+        const result = run();
+        expect(result.status, result.stderr).toBe(1);
+        expect(result.stderr).toContain("i18n parity:");
+        if (change === "missing") {
+          const build = spawnSync("npm run build", {
+            cwd: directory,
+            shell: true,
+            encoding: "utf8",
+          });
+          expect(build.status).not.toBe(0);
+          expect(build.stderr).toContain(
+            'missing or extra catalog key "french"',
+          );
+          expect(build.stdout).not.toContain("tsc --noEmit");
+        }
+      }
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+});
 
 describe("shell preferences", () => {
   it("uses French only when the browser locale begins with fr", () => {
