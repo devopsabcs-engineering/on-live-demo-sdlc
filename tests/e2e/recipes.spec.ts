@@ -21,6 +21,9 @@ for (const locale of ["en", "fr"]) {
     }, testInfo) => {
       await page.addInitScript(
         ({ locale, theme }) => {
+          Object.defineProperty(navigator, "language", {
+            value: locale === "fr" ? "fr-FR" : "en-US",
+          });
           localStorage.setItem(
             "pinch:v1:document",
             JSON.stringify({
@@ -37,6 +40,9 @@ for (const locale of ["en", "fr"]) {
         { locale, theme },
       );
       await page.goto("./");
+      await page.emulateMedia({ colorScheme: theme });
+      await expect(page.locator("html")).toHaveAttribute("lang", locale);
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       const bytes = await page.evaluate(
         () => localStorage["pinch:v1:document"],
       );
