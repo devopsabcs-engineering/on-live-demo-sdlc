@@ -1,4 +1,4 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -9,7 +9,7 @@ export default defineConfig({
     ["json", { outputFile: "test-results/results.json" }],
   ],
   use: {
-    ...devices["Desktop Chrome"],
+    viewport: { width: 1280, height: 720 },
     baseURL: "http://127.0.0.1:4173/ai-sdlc-labs-pinch/",
     locale: "en-US",
     headless: true,

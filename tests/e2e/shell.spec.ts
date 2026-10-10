@@ -118,7 +118,6 @@ test("actual Chromium browser zoom 200% via chrome.tabs.setZoom", async ({
         channel: "chromium",
         headless: true,
         viewport: null,
-        deviceScaleFactor: undefined,
         locale: "en-US",
         args: [
           `--disable-extensions-except=${directory}`,
