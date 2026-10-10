@@ -14,8 +14,8 @@ async function storedBytes(page: Page) {
   return page.evaluate((documentKey) => localStorage.getItem(documentKey), key);
 }
 
-for (const locale of ["en", "fr"]) {
-  for (const theme of ["light", "dark"]) {
+for (const locale of ["en", "fr"] as const) {
+  for (const theme of ["light", "dark"] as const) {
     test(`keyboard temporary consent remains explicitly unsaved: ${locale}/${theme}`, async ({
       page,
     }, testInfo) => {
