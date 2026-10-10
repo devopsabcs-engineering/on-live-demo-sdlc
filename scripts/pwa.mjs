@@ -113,12 +113,15 @@ export function pinchPwa() {
     configResolved(config) {
       base = config.base;
     },
-    generateBundle(_options, bundle) {
-      const { files } = createShell(bundle, base);
-      for (const [fileName, source] of files) {
-        if (!(fileName in bundle))
-          this.emitFile({ type: "asset", fileName, source });
-      }
+    generateBundle: {
+      order: "post",
+      handler(_options, bundle) {
+        const { files } = createShell(bundle, base);
+        for (const [fileName, source] of files) {
+          if (!(fileName in bundle))
+            this.emitFile({ type: "asset", fileName, source });
+        }
+      },
     },
   };
 }
