@@ -146,6 +146,10 @@ test("untrusted user content is literal text, never markup", async ({
   await expect(page.locator("#recipe-title")).toHaveText(literal);
   await expect(page.locator("#recipe-ingredients")).toHaveText(literal);
   await expect(page.locator("#recipe-steps")).toHaveText(literal);
+  await page.locator("#add-shopping").click();
+  await page.locator("#add-shopping").click();
+  await expect(page.locator("#shopping-list li")).toHaveCount(1);
+  await expect(page.locator("#shopping-list label")).toHaveText(literal);
   await expect(page.locator("img")).toHaveCount(0);
   await page.locator("#locale").selectOption("fr");
   await expect(page.locator("#recipe-title")).toHaveText(literal);
@@ -267,6 +271,7 @@ test("recipe and editor reflow in both languages and themes with keyboard focus"
         await expect(page.locator("#recipe-name")).toBeFocused();
         await fillRecipe(page, "X".repeat(200));
         await page.locator("#recipe-form button[type=submit]").click();
+        await page.locator("#add-shopping").click();
         const dimensions = await page.evaluate(() => ({
           client: document.documentElement.clientWidth,
           scroll: document.documentElement.scrollWidth,
@@ -286,3 +291,205 @@ test("recipe and editor reflow in both languages and themes with keyboard focus"
     }
   }
 });
+
+test("shopping adds scaled snapshots, reopens checked rows and persists keyboard checklist changes", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await expect(page.locator("#shopping-empty")).toBeVisible();
+  await expect(page.locator("#clear-checked")).toBeDisabled();
+  await page.locator("#target-servings").fill("8");
+  await page.locator("#target-servings").press("Tab");
+  await page.locator("#add-shopping").click();
+  await page.locator("#add-shopping").click();
+  const rows = page.locator("#shopping-list li");
+  await expect(rows.nth(0)).toHaveText("1,000 g flour");
+  await expect(rows.nth(1)).toHaveText("1,200 ml milk");
+  await expect(rows.nth(2)).toHaveText("8 eggs");
+  const count = await rows.count();
+  const checkbox = page.locator("#shopping-list input").first();
+  await checkbox.focus();
+  await checkbox.press("Space");
+  await expect(checkbox).toBeChecked();
+  await expect(checkbox).toBeFocused();
+  await page.reload();
+  await expect(checkbox).toBeChecked();
+  await checkbox.focus();
+  await checkbox.press("Space");
+  await expect(checkbox).not.toBeChecked();
+  await page.reload();
+  await expect(checkbox).not.toBeChecked();
+  await checkbox.check();
+  await page.locator("#add-shopping").click();
+  await expect(checkbox).not.toBeChecked();
+  await expect(rows.nth(0)).toHaveText("1,250 g flour");
+  await expect(rows).toHaveCount(count);
+  await checkbox.check();
+  await page.locator("#clear-checked").click();
+  await expect(page.locator("#add-shopping")).toBeFocused();
+  await expect(rows).toHaveCount(count - 1);
+  await expect(rows.first()).toHaveText("1,500 ml milk");
+  await page.reload();
+  await expect(rows).toHaveCount(count - 1);
+  for (const remaining of await page.locator("#shopping-list input").all())
+    await remaining.check();
+  await page.locator("#clear-checked").click();
+  await expect(page.locator("#shopping-empty")).toBeVisible();
+  await page.locator("#locale").selectOption("fr");
+  await expect(page.locator("#shopping-empty")).toHaveText(
+    "Votre liste de courses est vide.",
+  );
+});
+
+test("shopping keeps add-time units and literal language names when preferences and servings change", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.locator("#units").selectOption("imperial");
+  await page.locator("#add-shopping").click();
+  const firstSnapshot = await storedBytes(page);
+  await page.locator("#units").selectOption("metric");
+  await page.locator("#target-servings").fill("8");
+  await page.locator("#target-servings").press("Tab");
+  await expect(page.locator("#shopping-list li").first()).toContainText(
+    "oz flour",
+  );
+  await page.locator("#add-shopping").click();
+  await expect(
+    page.getByRole("checkbox", { name: "500 g flour", exact: true }),
+  ).toBeVisible();
+  await page.locator("#locale").selectOption("fr");
+  await expect(page.locator("#shopping-list li").first()).toContainText(
+    "oz flour",
+  );
+  await page.locator("#add-shopping").click();
+  await expect(
+    page.getByRole("checkbox", { name: "500 g farine", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("checkbox", { name: "600 ml lait", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("checkbox", { name: "500 g flour", exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.locator("#shopping-list li").first()).toContainText(
+    "oz flour",
+  );
+  const preserved = await page.evaluate((documentKey) => {
+    const saved = JSON.parse(localStorage.getItem(documentKey) ?? "{}");
+    return saved.shopping[0];
+  }, key);
+  expect(preserved).toEqual(JSON.parse(firstSnapshot ?? "{}").shopping[0]);
+});
+
+test("shopping stores unrounded quantities and remains independent of recipe edits", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.locator("#new-recipe").click();
+  await fillRecipe(page, "Precision");
+  await page
+    .locator("#ingredient-lines")
+    .fill("1/3 g flour\nsalt to taste\n SALT  to TASTE");
+  await page.locator("#recipe-form button[type=submit]").click();
+  await page.locator("#add-shopping").click();
+  await page.locator("#add-shopping").click();
+  await expect(page.locator("#shopping-list li")).toHaveCount(2);
+  expect(
+    JSON.parse((await storedBytes(page)) ?? "{}").shopping[0].quantity,
+  ).toBe(2 / 3);
+  await expect(page.locator("#shopping-list li").first()).toHaveText(
+    "< 1 g flour",
+  );
+  await page.locator("#edit-recipe").click();
+  await page.locator("#ingredient-lines").fill("2 g sugar");
+  await page.locator("#recipe-form button[type=submit]").click();
+  await expect(page.locator("#shopping-list li").first()).toHaveText(
+    "< 1 g flour",
+  );
+  await page.reload();
+  expect(
+    JSON.parse((await storedBytes(page)) ?? "{}").shopping[0].quantity,
+  ).toBe(2 / 3);
+});
+
+test("shopping quota failures revert check, add and clear atomically and allow retry", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.locator("#add-shopping").click();
+  const checkbox = page.locator("#shopping-list input").first();
+  await checkbox.check();
+  const bytes = await storedBytes(page);
+  const labels = await page.locator("#shopping-list label").allTextContents();
+  await page.evaluate(() => {
+    const original = Storage.prototype.setItem;
+    Object.defineProperty(window, "restoreShoppingStorage", {
+      value: () => {
+        Storage.prototype.setItem = original;
+      },
+    });
+    Storage.prototype.setItem = () => {
+      throw new DOMException("Full", "QuotaExceededError");
+    };
+  });
+  await checkbox.focus();
+  await checkbox.press("Space");
+  await expect(checkbox).toBeChecked();
+  await expect(checkbox).toBeFocused();
+  await page.locator("#clear-checked").click();
+  await expect(page.locator("#shopping-list label")).toHaveText(labels);
+  await page.locator("#add-shopping").click();
+  await expect(checkbox).toBeChecked();
+  await expect(page.locator("#shopping-list label")).toHaveText(labels);
+  await expect(page.locator("#status")).toContainText("No change was saved");
+  expect(await storedBytes(page)).toBe(bytes);
+  await page.evaluate(() => {
+    if (
+      "restoreShoppingStorage" in window &&
+      typeof window.restoreShoppingStorage === "function"
+    )
+      window.restoreShoppingStorage();
+  });
+  await page.locator("#add-shopping").click();
+  await expect(checkbox).not.toBeChecked();
+  await expect(page.locator("#shopping-list li").first()).toHaveText(
+    "500 g flour",
+  );
+});
+
+for (const limit of ["quantity", "rows"]) {
+  test(`shopping ${limit} limit rejects all changes and preserves durable bytes`, async ({
+    page,
+  }) => {
+    await page.goto("./");
+    await page.locator("#add-shopping").click();
+    await page.evaluate(
+      ({ documentKey, exceeded }) => {
+        const saved = JSON.parse(localStorage.getItem(documentKey) ?? "{}");
+        if (exceeded === "quantity") {
+          saved.shopping[1].quantity = 1_000_000;
+          saved.shopping[0].checked = true;
+        } else {
+          saved.shopping = Array.from({ length: 1000 }, (_, index) => ({
+            kind: "text",
+            id: `item-${index}`,
+            raw: `ingredient ${index}`,
+            checked: true,
+          }));
+        }
+        localStorage.setItem(documentKey, JSON.stringify(saved));
+      },
+      { documentKey: key, exceeded: limit },
+    );
+    await page.reload();
+    const bytes = await storedBytes(page);
+    const labels = await page.locator("#shopping-list label").allTextContents();
+    await page.locator("#add-shopping").click();
+    await expect(page.locator("#status")).toContainText("No change was saved");
+    await expect(page.locator("#shopping-list label")).toHaveText(labels);
+    await expect(page.locator("#shopping-list input").first()).toBeChecked();
+    expect(await storedBytes(page)).toBe(bytes);
+  });
+}

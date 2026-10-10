@@ -3,6 +3,7 @@ import { isCatalogKey, translate, type CatalogKey } from "./i18n";
 import { DOCUMENT_KEY, type DocumentV1, type UserRecipe } from "./preferences";
 import { RecipeRepository } from "./data/repository";
 import { getSample, sampleIds } from "./data/samples";
+import { mergeShopping, type ShoppingSnapshot } from "./domain/shopping";
 import {
   validateDraft,
   type RecipeField,
@@ -160,6 +161,61 @@ function renderRecipe(): void {
   }
 }
 
+function renderShopping(): void {
+  const list = required<HTMLElement>("#shopping-list");
+  const focusedId =
+    document.activeElement instanceof HTMLInputElement
+      ? document.activeElement.dataset["itemId"]
+      : undefined;
+  list.replaceChildren();
+  for (const item of appDocument.shopping) {
+    const row = document.createElement("li");
+    const label = document.createElement("label");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.dataset["itemId"] = item.id;
+    checkbox.checked = item.checked;
+    const description = document.createElement("span");
+    description.textContent =
+      item.kind === "text"
+        ? item.raw
+        : [
+            formatQuantity(
+              item.quantity,
+              item.unit,
+              appDocument.preferences.locale,
+            ),
+            formatUnit(item.unit, appDocument.preferences.locale),
+            item.name,
+          ]
+            .filter(Boolean)
+            .join(" ");
+    checkbox.addEventListener("change", () => {
+      commit(
+        {
+          ...appDocument,
+          shopping: appDocument.shopping.map((saved) =>
+            saved.id === item.id
+              ? { ...saved, checked: checkbox.checked }
+              : saved,
+          ),
+        },
+        "shoppingSaved",
+      );
+      renderShopping();
+      renderMessages();
+    });
+    label.append(checkbox, description);
+    row.append(label);
+    list.append(row);
+    if (item.id === focusedId) checkbox.focus();
+  }
+  required<HTMLElement>("#shopping-empty").hidden =
+    appDocument.shopping.length > 0;
+  required<HTMLButtonElement>("#clear-checked").disabled =
+    !appDocument.shopping.some((item) => item.checked);
+}
+
 function renderLibrary(): void {
   const focusedId =
     document.activeElement instanceof HTMLElement
@@ -215,6 +271,7 @@ function render(): void {
   applyTheme();
   renderLibrary();
   renderRecipe();
+  renderShopping();
   renderMessages();
 }
 
@@ -326,6 +383,46 @@ function changeServings(value: number): void {
   renderRecipe();
   renderMessages();
 }
+
+required<HTMLButtonElement>("#add-shopping").addEventListener("click", () => {
+  const recipe = getSelectedRecipe();
+  const snapshots: ShoppingSnapshot[] = recipe.ingredients.map((ingredient) => {
+    if (ingredient.kind === "text")
+      return { kind: "text", raw: ingredient.raw };
+    const scaled = scaleQuantity(
+      ingredient.quantity,
+      recipe.baseServings,
+      targetServings,
+    );
+    if (!scaled.ok) throw new Error("Validated recipe could not be scaled.");
+    const converted = convertQuantity(
+      scaled.quantity,
+      ingredient.unit,
+      appDocument.preferences.units,
+    );
+    return { kind: "parsed", name: ingredient.name, ...converted };
+  });
+  const result = mergeShopping(appDocument.shopping, snapshots);
+  if (!result.ok) statusKey = result.error;
+  else commit({ ...appDocument, shopping: result.shopping }, "shoppingAdded");
+  renderShopping();
+  renderMessages();
+});
+required<HTMLButtonElement>("#clear-checked").addEventListener("click", () => {
+  if (
+    commit(
+      {
+        ...appDocument,
+        shopping: appDocument.shopping.filter((item) => !item.checked),
+      },
+      "shoppingCleared",
+    )
+  ) {
+    required<HTMLButtonElement>("#add-shopping").focus();
+  }
+  renderShopping();
+  renderMessages();
+});
 servingsInput.addEventListener("change", () =>
   changeServings(Number(servingsInput.value)),
 );

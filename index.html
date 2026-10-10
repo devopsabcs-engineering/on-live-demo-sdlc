@@ -109,6 +109,9 @@
             <ol id="recipe-steps" class="steps"></ol>
           </section>
         </div>
+        <button id="add-shopping" type="button" data-i18n="addShopping">
+          Add to shopping list
+        </button>
         <section id="editor" hidden aria-labelledby="editor-heading">
           <h2 id="editor-heading" data-i18n="editorLabel">Recipe editor</h2>
           <form id="recipe-form" novalidate>
@@ -159,6 +162,25 @@
               </button>
             </div>
           </form>
+        </section>
+        <section class="shopping" aria-labelledby="shopping-heading">
+          <div class="library-heading">
+            <h2 id="shopping-heading" data-i18n="shoppingLabel">
+              Shopping list
+            </h2>
+            <button
+              id="clear-checked"
+              type="button"
+              data-i18n="clearChecked"
+              disabled
+            >
+              Clear checked
+            </button>
+          </div>
+          <p id="shopping-empty" class="storage-note" data-i18n="shoppingEmpty">
+            Your shopping list is empty.
+          </p>
+          <ul id="shopping-list"></ul>
         </section>
       </section>
       <p
