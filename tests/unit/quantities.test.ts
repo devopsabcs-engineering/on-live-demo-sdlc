@@ -114,7 +114,9 @@ describe("dimensional conversion", () => {
     (quantity, unit, metric) => {
       const converted = convertQuantity(quantity, unit, "metric");
       expect(converted.quantity).toBeCloseTo(metric, 10);
-      expect(converted.unit).toBe(unit === "oz" || unit === "lb" ? "g" : "ml");
+      expect(converted.unit).toBe(
+        unit === "kg" || unit === "oz" || unit === "lb" ? "g" : "ml",
+      );
     },
   );
 

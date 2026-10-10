@@ -71,6 +71,13 @@ export function parseLine(raw: string): Ingredient {
 
   const suffix = line.slice(match[0].length).trim();
   if (!suffix || /^[-–—]\s*\d/u.test(suffix)) return { kind: "text", raw };
+  if (
+    aliasesByLength.some(
+      ({ alias }) => alias.toLowerCase() === suffix.toLowerCase(),
+    )
+  ) {
+    return { kind: "text", raw };
+  }
 
   const quantity = parseQuantity(match[0]);
   if (quantity === null || !Number.isFinite(quantity) || quantity > 1_000_000) {
