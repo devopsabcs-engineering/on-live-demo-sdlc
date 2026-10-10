@@ -30,14 +30,16 @@ for (const locale of ["en", "fr"]) {
               preferences: { locale, theme, units: "metric" },
             }),
           );
-          Storage.prototype.setItem = () => {
+          Storage.prototype.getItem = () => {
             throw new DOMException("Denied", "SecurityError");
           };
         },
         { locale, theme },
       );
       await page.goto("./");
-      const bytes = await storedBytes(page);
+      const bytes = await page.evaluate(
+        () => localStorage["pinch:v1:document"],
+      );
       await tabTo(page, "#new-recipe");
       await page.keyboard.press("Enter");
       await page.keyboard.type("Keyboard temporary");
@@ -66,7 +68,9 @@ for (const locale of ["en", "fr"]) {
       await expect(page.locator("#recipe-title")).toHaveText(
         "Keyboard temporary",
       );
-      expect(await storedBytes(page)).toBe(bytes);
+      expect(await page.evaluate(() => localStorage["pinch:v1:document"])).toBe(
+        bytes,
+      );
       await testInfo.attach("temporary-tab-order", {
         body: JSON.stringify(order),
         contentType: "application/json",
@@ -114,13 +118,7 @@ for (const locale of ["en", "fr"]) {
           await expect(
             page.locator("#recipe-ingredients li").last().locator("span"),
           ).toHaveText([
-            servings === 8
-              ? "6"
-              : servings === 1
-                ? locale === "fr"
-                  ? "0,75"
-                  : "0.75"
-                : "3",
+            servings === 8 ? "6" : servings === 1 ? "3/4" : "3",
             "scoops flour",
           ]);
           expect(

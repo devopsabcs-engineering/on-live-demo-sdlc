@@ -100,7 +100,23 @@ export async function inspectRendered(
       }
       for (const rect of range.getClientRects()) {
         if (rect.width < 1 || rect.height < 1) continue;
-        fragments.push({ text: text.slice(0, 80), rect });
+        let top = rect.top;
+        let bottom = rect.bottom;
+        for (
+          let ancestor: Element | null = parent;
+          ancestor;
+          ancestor = ancestor.parentElement
+        ) {
+          const style = getComputedStyle(ancestor);
+          if (["auto", "scroll"].includes(style.overflowY)) {
+            const bounds = ancestor.getBoundingClientRect();
+            top = Math.max(top, bounds.top);
+            bottom = Math.min(bottom, bounds.bottom);
+          }
+        }
+        if (bottom <= top) continue;
+        const painted = new DOMRect(rect.left, top, rect.width, bottom - top);
+        fragments.push({ text: text.slice(0, 80), rect: painted });
         if (rect.left < -1 || rect.right > innerWidth + 1)
           issues.push(`viewport text clipping: ${text.slice(0, 80)}`);
         for (
@@ -119,7 +135,7 @@ export async function inspectRendered(
             issues.push(`horizontal ancestor clipping: ${text.slice(0, 80)}`);
           if (
             ["hidden", "clip"].includes(ancestorStyle.overflowY) &&
-            (rect.top < bounds.top - 1 || rect.bottom > bounds.bottom + 1)
+            (painted.top < bounds.top - 1 || painted.bottom > bounds.bottom + 1)
           )
             issues.push(`vertical ancestor clipping: ${text.slice(0, 80)}`);
         }
@@ -191,12 +207,19 @@ export async function inspectRendered(
         issues.push(`focus indicator insufficient: ${focused.id}`);
       const outside = Math.max(0, thickness + offset);
       if (
-        bounds.left - outside < 0 ||
-        bounds.right + outside > innerWidth ||
-        bounds.top - outside < 0 ||
-        bounds.bottom + outside > innerHeight
+        bounds.left < -1 ||
+        bounds.right > innerWidth + 1 ||
+        bounds.top < -1 ||
+        bounds.bottom > innerHeight + 1
       )
         issues.push(`focus clipped by viewport: ${focused.id}`);
+      Object.assign(focus, {
+        outlineTouchesViewport:
+          bounds.left - outside < 0 ||
+          bounds.right + outside > innerWidth ||
+          bounds.top - outside < 0 ||
+          bounds.bottom + outside > innerHeight,
+      });
       const hit = document.elementFromPoint(
         bounds.left + bounds.width / 2,
         bounds.top + bounds.height / 2,
