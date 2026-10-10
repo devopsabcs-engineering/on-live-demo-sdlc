@@ -1,4 +1,5 @@
 import "./styles.css";
+import { OfflineShell, type OfflineStatus } from "./offline";
 import { isCatalogKey, translate, type CatalogKey } from "./i18n";
 import {
   DOCUMENT_KEY,
@@ -59,6 +60,18 @@ let temporarySession = false;
 let targetInvalid = false;
 let fieldErrors: Partial<Record<RecipeField, RecipeFieldError>> = {};
 let cookingStep = 0;
+let offlineStatus: OfflineStatus = null;
+const offlineShell =
+  "serviceWorker" in navigator && import.meta.env.PROD
+    ? new OfflineShell(
+        navigator.serviceWorker,
+        (status) => {
+          offlineStatus = status;
+          renderMessages();
+        },
+        () => window.location.reload(),
+      )
+    : null;
 let swipe: { id: number; x: number; y: number; vertical: number } | null = null;
 const fullscreenTarget = document.documentElement;
 const cooking = new CookSession(
@@ -124,6 +137,19 @@ function applyTheme(): void {
 }
 
 function renderMessages(): void {
+  document
+    .querySelectorAll<HTMLElement>(".offline-notice")
+    .forEach((notice) => {
+      notice.hidden = offlineStatus === null;
+      const message = notice.querySelector<HTMLElement>(".offline-status");
+      if (message)
+        message.textContent = offlineStatus ? text(offlineStatus) : "";
+      const accept = notice.querySelector<HTMLButtonElement>(".accept-update");
+      if (accept) {
+        accept.hidden = offlineStatus !== "updateAvailable";
+        accept.textContent = text("acceptUpdate");
+      }
+    });
   statusRegion.textContent = statusKey ? text(statusKey) : "";
   warningRegion.textContent = temporarySession
     ? text("temporaryNotice")
@@ -399,7 +425,7 @@ cookDialog.addEventListener("keydown", (event) => {
       cookDialog.querySelectorAll<HTMLElement>(
         'button:not(:disabled), select, [tabindex="0"]',
       ),
-    );
+    ).filter((control) => !control.closest("[hidden]"));
     const index = controls.indexOf(document.activeElement as HTMLElement);
     const next = event.shiftKey
       ? (index - 1 + controls.length) % controls.length
@@ -749,3 +775,11 @@ window.addEventListener("storage", (event) => {
 });
 
 render();
+document
+  .querySelectorAll<HTMLButtonElement>(".accept-update")
+  .forEach((button) => {
+    button.addEventListener("click", () => {
+      if (window.confirm(text("confirmUpdate"))) offlineShell?.accept();
+    });
+  });
+void offlineShell?.start(import.meta.env.BASE_URL);

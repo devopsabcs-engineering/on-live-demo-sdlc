@@ -1,5 +1,11 @@
 {
   "skipToContent": "Skip to content",
+  "offlineReady": "Pinch is ready offline.",
+  "offlineUnavailable": "Offline installation failed. Keep this page open and retry online by reloading.",
+  "offlineUpdateFailed": "The update could not be installed. Your previous offline Pinch is still available.",
+  "updateAvailable": "A Pinch update is ready.",
+  "acceptUpdate": "Update Pinch",
+  "confirmUpdate": "Update and reload Pinch now? Unsaved recipe edits and cooking progress will be lost. Cancel to finish first.",
   "languageLabel": "Language",
   "english": "English",
   "french": "French",

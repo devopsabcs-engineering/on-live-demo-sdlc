@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#edf2ef" />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="%BASE_URL%icons/pinch-192.png" />
     <title>Pinch</title>
   </head>
   <body>
@@ -33,6 +35,17 @@
         </label>
       </div>
     </header>
+    <div class="offline-notice" hidden>
+      <p class="offline-status" role="status"></p>
+      <button
+        class="accept-update"
+        type="button"
+        data-i18n="acceptUpdate"
+        hidden
+      >
+        Update Pinch
+      </button>
+    </div>
     <main id="main" tabindex="-1">
       <section class="workbench" aria-labelledby="workbench-title">
         <p class="workbench-kicker" data-i18n="workbenchKicker">
@@ -250,6 +263,17 @@
           </div>
         </div>
         <footer class="cook-footer">
+          <div class="offline-notice" hidden>
+            <p class="offline-status" role="status"></p>
+            <button
+              class="accept-update"
+              type="button"
+              data-i18n="acceptUpdate"
+              hidden
+            >
+              Update Pinch
+            </button>
+          </div>
           <p id="cook-feedback" role="status" aria-live="polite"></p>
           <nav class="cook-navigation">
             <button id="cook-previous" type="button">&larr;</button>

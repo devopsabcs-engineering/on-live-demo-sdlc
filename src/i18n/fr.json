@@ -1,5 +1,11 @@
 {
   "skipToContent": "Aller au contenu",
+  "offlineReady": "Pinch est prêt hors ligne.",
+  "offlineUnavailable": "L'installation hors ligne a échoué. Gardez cette page ouverte et réessayez en ligne en la rechargeant.",
+  "offlineUpdateFailed": "La mise à jour a échoué. Votre version précédente de Pinch reste disponible hors ligne.",
+  "updateAvailable": "Une mise à jour de Pinch est prête.",
+  "acceptUpdate": "Mettre à jour Pinch",
+  "confirmUpdate": "Mettre à jour et recharger Pinch maintenant ? Les modifications non enregistrées et la progression de cuisson seront perdues. Annulez pour terminer d'abord.",
   "languageLabel": "Langue",
   "english": "Anglais",
   "french": "Français",
