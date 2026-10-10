@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { createShell, type ShellBundle } from "../../scripts/pwa.mjs";
+import { inspectRendered, tabTo } from "./acceptance-helpers";
 
 const base = "/ai-sdlc-labs-pinch/";
 const documentKey = "pinch:v1:document";
@@ -285,6 +286,77 @@ async function updateServer() {
         server.closeAllConnections();
       }),
   };
+}
+
+for (const locale of ["en", "fr"] as const) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`keyboard real-worker update cancel and accept: ${locale}/${theme}`, async ({
+      page,
+    }, testInfo) => {
+      const server = await updateServer();
+      try {
+        await installed(page, server.url);
+        await page.locator("#locale").selectOption(locale);
+        await page.locator("#theme").selectOption(theme);
+        await tabTo(page, "#new-recipe");
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Unsaved keyboard draft");
+        server.setMode("next");
+        await page.evaluate(async () => {
+          await (await navigator.serviceWorker.ready).update();
+        });
+        const selector = "body > .offline-notice .accept-update";
+        await expect(page.locator(selector)).toBeVisible();
+        const order = await tabTo(page, selector);
+        await inspectRendered(
+          page,
+          testInfo,
+          `update-${locale}-${theme}-cancel`,
+        );
+        page.once("dialog", async (dialog) => {
+          expect(dialog.message()).toContain(
+            locale === "fr"
+              ? "modifications non enregistrées"
+              : "Unsaved recipe edits",
+          );
+          await dialog.dismiss();
+        });
+        await page.keyboard.press("Enter");
+        await expect(page.locator("#recipe-name")).toHaveValue(
+          "Unsaved keyboard draft",
+        );
+        await expect(page.locator("body")).toHaveAttribute(
+          "data-build",
+          "previous",
+        );
+        await expect(page.locator(selector)).toBeFocused();
+        await tabTo(page, "#cancel-editor");
+        await page.keyboard.press("Enter");
+        await tabTo(page, "#start-cooking");
+        await page.keyboard.press("Enter");
+        await tabTo(page, "#cook-dialog .accept-update");
+        await inspectRendered(
+          page,
+          testInfo,
+          `update-${locale}-${theme}-accept`,
+        );
+        page.once("dialog", (dialog) => dialog.accept());
+        await page.keyboard.press("Enter");
+        await expect(page.locator("body")).toHaveAttribute(
+          "data-build",
+          "next",
+        );
+        await expect(page.locator("#locale")).toHaveValue(locale);
+        await expect(page.locator("#theme")).toHaveValue(theme);
+        await testInfo.attach("update-tab-order", {
+          body: JSON.stringify(order),
+          contentType: "application/json",
+        });
+      } finally {
+        await server.close();
+      }
+    });
+  }
 }
 
 test("failed real-worker update retains the old offline shell; waiting updates activate only after explicit acceptance", async ({

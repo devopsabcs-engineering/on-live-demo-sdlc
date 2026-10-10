@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { inspectRendered, tabTo } from "./acceptance-helpers";
 
 const key = "pinch:v1:document";
 async function fillRecipe(page: Page, title = "My dinner") {
@@ -11,6 +12,222 @@ async function fillRecipe(page: Page, title = "My dinner") {
 }
 async function storedBytes(page: Page) {
   return page.evaluate((documentKey) => localStorage.getItem(documentKey), key);
+}
+
+for (const locale of ["en", "fr"]) {
+  for (const theme of ["light", "dark"]) {
+    test(`keyboard temporary consent remains explicitly unsaved: ${locale}/${theme}`, async ({
+      page,
+    }, testInfo) => {
+      await page.addInitScript(
+        ({ locale, theme }) => {
+          localStorage.setItem(
+            "pinch:v1:document",
+            JSON.stringify({
+              schemaVersion: 1,
+              userRecipes: [],
+              shopping: [],
+              preferences: { locale, theme, units: "metric" },
+            }),
+          );
+          Storage.prototype.setItem = () => {
+            throw new DOMException("Denied", "SecurityError");
+          };
+        },
+        { locale, theme },
+      );
+      await page.goto("./");
+      const bytes = await storedBytes(page);
+      await tabTo(page, "#new-recipe");
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("Keyboard temporary");
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("ControlOrMeta+A");
+      await page.keyboard.type("4");
+      await page.keyboard.press("Tab");
+      await page.keyboard.type("salt to taste");
+      await page.keyboard.press("Tab");
+      await page.keyboard.type("Serve");
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Enter");
+      await expect(page.locator("#library button")).toHaveCount(3);
+      const order = await tabTo(page, "#temporary-session");
+      await inspectRendered(
+        page,
+        testInfo,
+        `temporary-consent-${locale}-${theme}`,
+      );
+      await page.keyboard.press("Enter");
+      await expect(page.locator("#storage-warning")).toContainText(
+        locale === "fr" ? "Session temporaire" : "Temporary session",
+      );
+      await tabTo(page, "#recipe-form button[type=submit]");
+      await page.keyboard.press("Enter");
+      await expect(page.locator("#recipe-title")).toHaveText(
+        "Keyboard temporary",
+      );
+      expect(await storedBytes(page)).toBe(bytes);
+      await testInfo.attach("temporary-tab-order", {
+        body: JSON.stringify(order),
+        contentType: "application/json",
+      });
+      await page.reload();
+      await expect(page.locator("#library button")).toHaveCount(3);
+    });
+
+    test(`AC2.2 preserved malformed lines and unknown counts: ${locale}/${theme}`, async ({
+      page,
+    }) => {
+      const raw = [
+        "salt to taste",
+        "1/0 cup milk",
+        "1-2 cups flour",
+        "1 - 2 cups flour",
+        "1, cups flour",
+        "1. cups flour",
+        "-1 cup flour",
+        "1e3 g flour",
+        "1 cup",
+        "1000001 g flour",
+        "999999999999999999999999 g flour",
+      ];
+      await page.goto("./");
+      await page.locator("#locale").selectOption(locale);
+      await page.locator("#theme").selectOption(theme);
+      await page.locator("#new-recipe").click();
+      await fillRecipe(page, "Preserved inputs");
+      await page
+        .locator("#ingredient-lines")
+        .fill([...raw, "3 scoops flour"].join("\n"));
+      await page.locator("#recipe-form button[type=submit]").click();
+      const recipes = JSON.parse((await storedBytes(page)) ?? "{}").userRecipes;
+      for (const servings of [8, 1, 4]) {
+        await page.locator("#target-servings").fill(String(servings));
+        await page.locator("#target-servings").press("Tab");
+        for (const units of ["imperial", "metric"]) {
+          await page.locator("#units").selectOption(units);
+          for (const [index, line] of raw.entries()) {
+            await expect(
+              page.locator("#recipe-ingredients li").nth(index),
+            ).toHaveText(line);
+          }
+          await expect(
+            page.locator("#recipe-ingredients li").last().locator("span"),
+          ).toHaveText([
+            servings === 8
+              ? "6"
+              : servings === 1
+                ? locale === "fr"
+                  ? "0,75"
+                  : "0.75"
+                : "3",
+            "scoops flour",
+          ]);
+          expect(
+            JSON.parse((await storedBytes(page)) ?? "{}").userRecipes,
+          ).toEqual(recipes);
+        }
+      }
+    });
+
+    test(`field error matrix preserves drafts and focuses each invalid field: ${locale}/${theme}`, async ({
+      page,
+    }) => {
+      const messages =
+        locale === "en"
+          ? {
+              title: "Enter a title of 1 to 200 characters.",
+              servings: "Enter a whole number of servings from 1 to 24.",
+              ingredients:
+                "Enter 1 to 200 nonempty ingredient lines, at most 500 characters each.",
+              steps:
+                "Enter 1 to 100 nonempty steps, at most 2,000 characters each.",
+            }
+          : {
+              title: "Saisissez un titre de 1 à 200 caractères.",
+              servings: "Saisissez un nombre entier de portions de 1 à 24.",
+              ingredients:
+                "Saisissez 1 à 200 lignes d'ingrédients non vides, de 500 caractères maximum chacune.",
+              steps:
+                "Saisissez 1 à 100 étapes non vides, de 2 000 caractères maximum chacune.",
+            };
+      await page.goto("./");
+      await page.locator("#locale").selectOption(locale);
+      await page.locator("#theme").selectOption(theme);
+      await page.locator("#new-recipe").click();
+      const bytes = await storedBytes(page);
+      const cases = [
+        {
+          field: "recipe-name",
+          error: "title-error",
+          message: messages.title,
+          values: ["", " ", "x".repeat(201)],
+        },
+        {
+          field: "base-servings",
+          error: "base-error",
+          message: messages.servings,
+          values: ["", "0", "25", "1.5", "-1"],
+        },
+        {
+          field: "ingredient-lines",
+          error: "ingredients-error",
+          message: messages.ingredients,
+          values: [
+            "",
+            " \n ",
+            "x".repeat(501),
+            Array(201).fill("salt").join("\n"),
+          ],
+        },
+        {
+          field: "step-lines",
+          error: "steps-error",
+          message: messages.steps,
+          values: [
+            "",
+            " \n ",
+            "x".repeat(2001),
+            Array(101).fill("Mix").join("\n"),
+            "1. ",
+          ],
+        },
+      ];
+      for (const entry of cases) {
+        for (const value of entry.values) {
+          await fillRecipe(page);
+          await page.locator(`#${entry.field}`).fill(value);
+          const draft = await page
+            .locator("#recipe-form input, #recipe-form textarea")
+            .evaluateAll((elements) =>
+              elements.map((element) => (element as HTMLInputElement).value),
+            );
+          await page.locator("#recipe-form button[type=submit]").click();
+          await expect(page.locator(`#${entry.field}`)).toBeFocused();
+          await expect(page.locator(`#${entry.field}`)).toHaveAttribute(
+            "aria-invalid",
+            "true",
+          );
+          await expect(page.locator(`#${entry.field}`)).toHaveAttribute(
+            "aria-describedby",
+            entry.error,
+          );
+          await expect(page.locator(`#${entry.error}`)).toHaveText(
+            entry.message,
+          );
+          expect(
+            await page
+              .locator("#recipe-form input, #recipe-form textarea")
+              .evaluateAll((elements) =>
+                elements.map((element) => (element as HTMLInputElement).value),
+              ),
+          ).toEqual(draft);
+          expect(await storedBytes(page)).toBe(bytes);
+          await expect(page.locator("#library button")).toHaveCount(3);
+        }
+      }
+    });
+  }
 }
 
 test("three samples scale from base, convert without drift, and reload without duplicate seeds", async ({

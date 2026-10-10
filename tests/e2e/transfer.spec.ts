@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
+import { inspectRendered, tabTo } from "./acceptance-helpers";
 
 const key = "pinch:v1:document";
 const transferDocument = {
@@ -69,6 +70,60 @@ async function download(page: Page) {
     name: downloaded.suggestedFilename(),
     raw: await readFile(path, "utf8"),
   };
+}
+
+for (const locale of ["en", "fr"] as const) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`keyboard import picker activation and replacement: ${locale}/${theme}`, async ({
+      page,
+    }, testInfo) => {
+      await page.goto("./");
+      await page.locator("#locale").selectOption(locale);
+      await page.locator("#theme").selectOption(theme);
+      const original = await stored(page);
+      const incoming = {
+        ...transferDocument,
+        preferences: { locale, theme, units: "metric" },
+      };
+      for (const accept of [false, true]) {
+        const order = await tabTo(page, "#import-data");
+        await inspectRendered(
+          page,
+          testInfo,
+          `import-${locale}-${theme}-${accept}`,
+        );
+        const picker = page.waitForEvent("filechooser");
+        await page.keyboard.press("Enter");
+        const chooser = await picker;
+        expect(chooser.isMultiple()).toBe(false);
+        page.once("dialog", async (dialog) => {
+          expect(dialog.type()).toBe("confirm");
+          expect(dialog.message()).toContain(
+            locale === "fr" ? "Remplacer toutes" : "Replace all",
+          );
+          if (accept) await dialog.accept();
+          else await dialog.dismiss();
+        });
+        await chooser.setFiles({
+          name: "keyboard.json",
+          mimeType: "application/json",
+          buffer: Buffer.from(JSON.stringify(incoming)),
+        });
+        if (accept) {
+          await expect(page.locator("#library button")).toHaveCount(4);
+          expect(JSON.parse((await stored(page)) ?? "{}")).toEqual(incoming);
+        } else {
+          expect(await stored(page)).toBe(original);
+          await expect(page.locator("#library button")).toHaveCount(3);
+        }
+        await expect(page.locator("#import-data")).toBeFocused();
+        await testInfo.attach(`import-tab-order-${accept}`, {
+          body: JSON.stringify(order),
+          contentType: "application/json",
+        });
+      }
+    });
+  }
 }
 
 test("schema-v1 download imports into a clean profile without duplicate samples or executable markup", async ({

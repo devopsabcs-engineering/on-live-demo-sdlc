@@ -36,3 +36,13 @@ jobs:
         run: npm run check:i18n
       - name: Browser smoke
         run: npm run test:e2e
+      - name: Retain browser acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-evidence-${{ matrix.os }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: warn
