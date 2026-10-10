@@ -80,7 +80,8 @@ export function serviceWorkerRuntime({ base, cacheName, cachePrefix, assets }) {
       (async () => {
         const cache = await caches.open(cacheName);
         const cached = await cache.match(
-          navigation ? `${root}index.html` : request,
+          navigation ? `${root}index.html` : url.href,
+          { ignoreVary: true },
         );
         return cached ?? fetch(request);
       })(),

@@ -30,6 +30,7 @@ function workerFixture() {
   const shell = createShell(bundle(), base);
   const stores = new Map<string, Map<string, Response>>();
   const handlers = new Map<string, (event: Record<string, unknown>) => void>();
+  const matches = vi.fn();
   const requestKey = (request: string | Request) =>
     typeof request === "string" ? request : request.url;
   const caches = {
@@ -41,8 +42,13 @@ function workerFixture() {
       }
       const data = store;
       return {
-        match: async (request: string | Request) =>
-          data.get(requestKey(request))?.clone(),
+        match: async (
+          request: string | Request,
+          options?: CacheQueryOptions,
+        ) => {
+          matches(request, options);
+          return data.get(requestKey(request))?.clone();
+        },
         put: async (request: string | Request, response: Response) => {
           data.set(requestKey(request), response.clone());
         },
@@ -85,7 +91,16 @@ function workerFixture() {
     await promise;
     return response ? await response : undefined;
   }
-  return { ...shell, stores, caches, fetch, clients, skipWaiting, invoke };
+  return {
+    ...shell,
+    stores,
+    caches,
+    matches,
+    fetch,
+    clients,
+    skipWaiting,
+    invoke,
+  };
 }
 
 describe("emitted offline shell", () => {
@@ -232,6 +247,10 @@ describe("transactional generated worker", () => {
         })
       )?.text(),
     ).toBe("shell");
+    expect(fixture.matches).toHaveBeenLastCalledWith(
+      `${origin}${base}assets/main-hash.js`,
+      { ignoreVary: true },
+    );
     for (const url of [
       `${origin}/other/`,
       `${origin}${base}backup.json`,
