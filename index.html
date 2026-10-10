@@ -41,14 +41,143 @@
         <h1 id="workbench-title" data-i18n="workbenchTitle">
           Recipes, in good measure.
         </h1>
-        <p class="workbench-copy" data-i18n="workbenchCopy">
-          A little more room for the good parts.
-        </p>
-        <div class="measure-rule" aria-hidden="true"><span></span></div>
-        <p class="workbench-note" data-i18n="workbenchNote">
-          Your recipe space is ready.
-        </p>
+        <div class="library-heading">
+          <h2 data-i18n="libraryLabel">Recipes</h2>
+          <button id="new-recipe" type="button" data-i18n="newRecipe">
+            New recipe
+          </button>
+        </div>
+        <nav id="library" class="library" aria-label="Recipes"></nav>
+        <div class="recipe-heading">
+          <h2 id="recipe-title"></h2>
+          <button id="edit-recipe" type="button" data-i18n="editRecipe">
+            Edit recipe
+          </button>
+        </div>
+        <div class="measure-controls">
+          <div>
+            <label for="target-servings" data-i18n="targetServings"
+              >Servings</label
+            >
+            <div class="servings-dial">
+              <button
+                id="decrease-servings"
+                type="button"
+                aria-label="Fewer servings"
+                title="Fewer servings"
+              >
+                -
+              </button>
+              <input
+                id="target-servings"
+                type="number"
+                min="1"
+                max="24"
+                step="1"
+                aria-describedby="target-error"
+              />
+              <button
+                id="increase-servings"
+                type="button"
+                aria-label="More servings"
+                title="More servings"
+              >
+                +
+              </button>
+            </div>
+            <p id="target-error" class="field-error" role="status"></p>
+          </div>
+          <label class="preference-control" for="units">
+            <span data-i18n="unitsLabel">Units</span>
+            <select id="units">
+              <option value="metric" data-i18n="metric">Metric</option>
+              <option value="imperial" data-i18n="imperial">
+                Imperial (US)
+              </option>
+            </select>
+          </label>
+        </div>
+        <div class="recipe-content">
+          <section aria-labelledby="ingredients-heading">
+            <h3 id="ingredients-heading" data-i18n="ingredientsLabel">
+              Ingredients
+            </h3>
+            <ul id="recipe-ingredients" class="ingredients"></ul>
+          </section>
+          <section aria-labelledby="steps-heading">
+            <h3 id="steps-heading" data-i18n="stepsLabel">Steps</h3>
+            <ol id="recipe-steps" class="steps"></ol>
+          </section>
+        </div>
+        <section id="editor" hidden aria-labelledby="editor-heading">
+          <h2 id="editor-heading" data-i18n="editorLabel">Recipe editor</h2>
+          <form id="recipe-form" novalidate>
+            <label for="recipe-name" data-i18n="titleLabel">Title</label>
+            <input
+              id="recipe-name"
+              name="title"
+              aria-describedby="title-error"
+            />
+            <p id="title-error" class="field-error"></p>
+            <label for="base-servings" data-i18n="baseServings"
+              >Base servings</label
+            >
+            <input
+              id="base-servings"
+              name="baseServings"
+              type="number"
+              min="1"
+              max="24"
+              step="1"
+              aria-describedby="base-error"
+            />
+            <p id="base-error" class="field-error"></p>
+            <label for="ingredient-lines" data-i18n="ingredientLines"
+              >Ingredients (one per line)</label
+            >
+            <textarea
+              id="ingredient-lines"
+              name="ingredients"
+              rows="6"
+              aria-describedby="ingredients-error"
+            ></textarea>
+            <p id="ingredients-error" class="field-error"></p>
+            <label for="step-lines" data-i18n="stepLines"
+              >Steps (one per line)</label
+            >
+            <textarea
+              id="step-lines"
+              name="steps"
+              rows="6"
+              aria-describedby="steps-error"
+            ></textarea>
+            <p id="steps-error" class="field-error"></p>
+            <div class="editor-actions">
+              <button type="submit" data-i18n="saveRecipe">Save recipe</button>
+              <button id="cancel-editor" type="button" data-i18n="cancel">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </section>
       </section>
+      <p
+        id="storage-warning"
+        class="status"
+        role="status"
+        aria-live="polite"
+      ></p>
+      <button
+        id="temporary-session"
+        type="button"
+        hidden
+        data-i18n="temporarySession"
+      >
+        Continue without saving
+      </button>
+      <p class="storage-note" data-i18n="localDataNotice">
+        Saved on this device only. Editing in multiple tabs is unsupported.
+      </p>
       <p id="status" class="status" role="status" aria-live="polite"></p>
     </main>
     <script type="module" src="./src/main.ts"></script>

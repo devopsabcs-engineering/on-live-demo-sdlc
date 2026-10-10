@@ -1,54 +1,80 @@
 import "./styles.css";
-import { translate, type CatalogKey } from "./i18n";
+import { isCatalogKey, translate, type CatalogKey } from "./i18n";
+import { DOCUMENT_KEY, type DocumentV1, type UserRecipe } from "./preferences";
+import { RecipeRepository } from "./data/repository";
+import { getSample, sampleIds } from "./data/samples";
 import {
-  createDefaultDocument,
-  DOCUMENT_KEY,
-  parseDocument,
-  type DocumentV1,
-  type Locale,
-  type ThemePreference,
-} from "./preferences";
+  validateDraft,
+  type RecipeField,
+  type RecipeFieldError,
+} from "./domain/recipes";
+import {
+  convertQuantity,
+  formatQuantity,
+  formatUnit,
+  scaleQuantity,
+} from "./domain/quantities";
 
-const localeControl = document.querySelector<HTMLSelectElement>("#locale");
-const themeControl = document.querySelector<HTMLSelectElement>("#theme");
-const status = document.querySelector<HTMLElement>("#status");
+function required<T extends Element>(selector: string): T {
+  const element = document.querySelector<T>(selector);
+  if (!element) throw new Error(`Missing required Pinch control: ${selector}`);
+  return element;
+}
+
+const localeSelect = required<HTMLSelectElement>("#locale");
+const themeSelect = required<HTMLSelectElement>("#theme");
+const unitsSelect = required<HTMLSelectElement>("#units");
+const statusRegion = required<HTMLElement>("#status");
+const warningRegion = required<HTMLElement>("#storage-warning");
+const library = required<HTMLElement>("#library");
+const servingsInput = required<HTMLInputElement>("#target-servings");
+const editor = required<HTMLElement>("#editor");
+const temporaryButton = required<HTMLButtonElement>("#temporary-session");
+const newButton = required<HTMLButtonElement>("#new-recipe");
+const editButton = required<HTMLButtonElement>("#edit-recipe");
 const mediaPreference = window.matchMedia("(prefers-color-scheme: dark)");
+const repository = new RecipeRepository(navigator.language, () => localStorage);
+let appDocument = repository.document;
+let selectedRecipeId: string = sampleIds[0] ?? "sample-pancakes";
+let targetServings = getSelectedRecipe().baseServings;
+let editingId: string | null = null;
+let editorOpener: HTMLButtonElement = newButton;
+let statusKey: CatalogKey | null = null;
+let temporarySession = false;
+let targetInvalid = false;
+let fieldErrors: Partial<Record<RecipeField, RecipeFieldError>> = {};
 
-if (!localeControl || !themeControl || !status) {
-  throw new Error("The Pinch shell is missing a required control.");
-}
-
-const localeSelect = localeControl;
-const themeSelect = themeControl;
-const statusRegion = status;
-
-let appDocument = createDefaultDocument(navigator.language);
-let canPersist = true;
-
-try {
-  const raw = localStorage.getItem(DOCUMENT_KEY);
-  if (raw !== null) {
-    const parsed = parseDocument(raw);
-    if (parsed) {
-      appDocument = parsed;
-    } else {
-      canPersist = false;
-      statusRegion.textContent = translate(
-        appDocument.preferences.locale,
-        "storedDataUnavailable",
-      );
-    }
-  }
-} catch {
-  canPersist = false;
-  statusRegion.textContent = translate(
-    appDocument.preferences.locale,
-    "preferenceSaveFailed",
-  );
-}
+const fields = {
+  title: required<HTMLInputElement>("#recipe-name"),
+  baseServings: required<HTMLInputElement>("#base-servings"),
+  ingredients: required<HTMLTextAreaElement>("#ingredient-lines"),
+  steps: required<HTMLTextAreaElement>("#step-lines"),
+};
+const errorElements = {
+  title: required<HTMLElement>("#title-error"),
+  baseServings: required<HTMLElement>("#base-error"),
+  ingredients: required<HTMLElement>("#ingredients-error"),
+  steps: required<HTMLElement>("#steps-error"),
+};
+const fieldOrder: RecipeField[] = [
+  "title",
+  "baseServings",
+  "ingredients",
+  "steps",
+];
 
 function text(key: CatalogKey): string {
   return translate(appDocument.preferences.locale, key);
+}
+
+function getSelectedRecipe(): UserRecipe {
+  const recipe =
+    getSample(selectedRecipeId, appDocument.preferences.locale) ??
+    appDocument.userRecipes.find(
+      (candidate) => candidate.id === selectedRecipeId,
+    );
+  if (!recipe) throw new Error("Selected recipe is missing.");
+  return recipe;
 }
 
 function applyTheme(): void {
@@ -65,46 +91,256 @@ function applyTheme(): void {
     ?.setAttribute("content", theme === "dark" ? "#14231d" : "#edf2ef");
 }
 
+function renderMessages(): void {
+  statusRegion.textContent = statusKey ? text(statusKey) : "";
+  warningRegion.textContent = temporarySession
+    ? text("temporaryNotice")
+    : repository.error
+      ? text(repository.error)
+      : "";
+  temporaryButton.hidden =
+    repository.error !== "storage-unavailable" || temporarySession;
+  required<HTMLElement>("#target-error").textContent = targetInvalid
+    ? text("servings-error")
+    : "";
+  servingsInput.setAttribute("aria-invalid", String(targetInvalid));
+  for (const field of fieldOrder) {
+    const error = fieldErrors[field];
+    errorElements[field].textContent = error ? text(error) : "";
+    fields[field].setAttribute("aria-invalid", String(Boolean(error)));
+  }
+}
+
+function renderIngredients(): void {
+  const list = required<HTMLElement>("#recipe-ingredients");
+  list.replaceChildren();
+  const recipe = getSelectedRecipe();
+  for (const ingredient of recipe.ingredients) {
+    const row = document.createElement("li");
+    if (ingredient.kind === "text") row.textContent = ingredient.raw;
+    else {
+      const scaled = scaleQuantity(
+        ingredient.quantity,
+        recipe.baseServings,
+        targetServings,
+      );
+      if (!scaled.ok) throw new Error("Validated recipe could not be scaled.");
+      const converted = convertQuantity(
+        scaled.quantity,
+        ingredient.unit,
+        appDocument.preferences.units,
+      );
+      const amount = document.createElement("span");
+      amount.className = "ingredient-amount";
+      amount.textContent =
+        `${formatQuantity(converted.quantity, converted.unit, appDocument.preferences.locale)} ${formatUnit(converted.unit, appDocument.preferences.locale)}`.trim();
+      const name = document.createElement("span");
+      name.textContent = ingredient.name;
+      row.append(amount, name);
+    }
+    list.append(row);
+  }
+}
+
+function renderRecipe(): void {
+  const recipe = getSelectedRecipe();
+  required<HTMLElement>("#recipe-title").textContent = recipe.title;
+  servingsInput.value = String(targetServings);
+  required<HTMLButtonElement>("#decrease-servings").disabled =
+    targetServings === 1;
+  required<HTMLButtonElement>("#increase-servings").disabled =
+    targetServings === 24;
+  renderIngredients();
+  const steps = required<HTMLElement>("#recipe-steps");
+  steps.replaceChildren();
+  for (const step of recipe.steps) {
+    const row = document.createElement("li");
+    row.textContent = step;
+    steps.append(row);
+  }
+}
+
+function renderLibrary(): void {
+  const focusedId =
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement.dataset["recipeId"]
+      : undefined;
+  library.replaceChildren();
+  const recipes = [
+    ...sampleIds.map((id) => getSample(id, appDocument.preferences.locale)),
+    ...appDocument.userRecipes,
+  ];
+  for (const recipe of recipes) {
+    if (!recipe) continue;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset["recipeId"] = recipe.id;
+    button.textContent = recipe.title;
+    button.setAttribute("aria-pressed", String(recipe.id === selectedRecipeId));
+    button.disabled = !editor.hidden;
+    button.addEventListener("click", () => {
+      selectedRecipeId = recipe.id;
+      targetServings = recipe.baseServings;
+      targetInvalid = false;
+      renderLibrary();
+      renderRecipe();
+      renderMessages();
+    });
+    library.append(button);
+    if (recipe.id === focusedId && !button.disabled) button.focus();
+  }
+}
+
 function render(): void {
   document.documentElement.lang = appDocument.preferences.locale;
   document.title = `Pinch | ${text("workbenchTitle")}`;
   document.querySelectorAll<HTMLElement>("[data-i18n]").forEach((element) => {
-    const key = element.dataset["i18n"] as CatalogKey | undefined;
-    if (key) element.textContent = text(key);
+    const key = element.dataset["i18n"];
+    if (key && isCatalogKey(key)) element.textContent = text(key);
   });
   localeSelect.value = appDocument.preferences.locale;
   themeSelect.value = appDocument.preferences.theme;
+  unitsSelect.value = appDocument.preferences.units;
   localeSelect.setAttribute("aria-label", text("languageLabel"));
   themeSelect.setAttribute("aria-label", text("appearanceLabel"));
+  library.setAttribute("aria-label", text("libraryLabel"));
+  for (const [selector, key] of [
+    ["#decrease-servings", "fewerServings"],
+    ["#increase-servings", "moreServings"],
+  ] as const) {
+    const button = required<HTMLButtonElement>(selector);
+    button.setAttribute("aria-label", text(key));
+    button.title = text(key);
+  }
   applyTheme();
+  renderLibrary();
+  renderRecipe();
+  renderMessages();
+}
+
+function commit(next: DocumentV1, success: CatalogKey): boolean {
+  const result = repository.save(next);
+  if (!result.ok) {
+    statusKey = result.error;
+    renderMessages();
+    return false;
+  }
+  appDocument = result.document;
+  statusKey = result.saved ? success : "temporaryNotice";
+  return true;
 }
 
 function updatePreference<K extends keyof DocumentV1["preferences"]>(
   key: K,
   value: DocumentV1["preferences"][K],
 ): void {
-  appDocument = {
-    ...appDocument,
-    preferences: { ...appDocument.preferences, [key]: value },
-  };
-
-  if (canPersist) {
-    try {
-      localStorage.setItem(DOCUMENT_KEY, JSON.stringify(appDocument));
-      statusRegion.textContent = text("preferenceSaved");
-    } catch {
-      canPersist = false;
-      statusRegion.textContent = text("preferenceSaveFailed");
-    }
-  } else {
-    statusRegion.textContent = text("preferenceSaveFailed");
-  }
+  commit(
+    {
+      ...appDocument,
+      preferences: { ...appDocument.preferences, [key]: value },
+    },
+    "preferenceSaved",
+  );
   render();
 }
 
+function openEditor(copySelected: boolean): void {
+  editorOpener = copySelected ? editButton : newButton;
+  const recipe = copySelected ? getSelectedRecipe() : null;
+  editingId = recipe?.id.startsWith("user-") ? recipe.id : null;
+  fields.title.value = recipe?.title ?? "";
+  fields.baseServings.value = String(recipe?.baseServings ?? 4);
+  fields.ingredients.value =
+    recipe?.ingredients.map((ingredient) => ingredient.raw).join("\n") ?? "";
+  fields.steps.value =
+    recipe?.steps.map((step, index) => `${index + 1}. ${step}`).join("\n") ??
+    "";
+  fieldErrors = {};
+  editor.hidden = false;
+  newButton.disabled = true;
+  editButton.disabled = true;
+  renderLibrary();
+  renderMessages();
+  fields.title.focus();
+}
+
+function closeEditor(): void {
+  editor.hidden = true;
+  newButton.disabled = false;
+  editButton.disabled = false;
+  fieldErrors = {};
+  renderLibrary();
+  renderMessages();
+  editorOpener.focus();
+}
+
+newButton.addEventListener("click", () => openEditor(false));
+editButton.addEventListener("click", () => openEditor(true));
+required<HTMLButtonElement>("#cancel-editor").addEventListener(
+  "click",
+  closeEditor,
+);
+required<HTMLFormElement>("#recipe-form").addEventListener(
+  "submit",
+  (event) => {
+    event.preventDefault();
+    const result = validateDraft(
+      {
+        title: fields.title.value,
+        baseServings: fields.baseServings.value,
+        ingredients: fields.ingredients.value,
+        steps: fields.steps.value,
+      },
+      editingId ?? `user-${crypto.randomUUID()}`,
+    );
+    fieldErrors = result.ok ? {} : result.errors;
+    renderMessages();
+    if (!result.ok) {
+      const first = fieldOrder.find((field) => fieldErrors[field]);
+      if (first) fields[first].focus();
+      return;
+    }
+    if (!editingId && appDocument.userRecipes.length >= 100) {
+      statusKey = "limit-exceeded";
+      renderMessages();
+      return;
+    }
+    const recipes = editingId
+      ? appDocument.userRecipes.map((recipe) =>
+          recipe.id === editingId ? result.recipe : recipe,
+        )
+      : [...appDocument.userRecipes, result.recipe];
+    if (!commit({ ...appDocument, userRecipes: recipes }, "recipeSaved"))
+      return;
+    selectedRecipeId = result.recipe.id;
+    targetServings = result.recipe.baseServings;
+    targetInvalid = false;
+    closeEditor();
+    render();
+  },
+);
+
+function changeServings(value: number): void {
+  targetInvalid = !Number.isInteger(value) || value < 1 || value > 24;
+  if (!targetInvalid) targetServings = value;
+  renderRecipe();
+  renderMessages();
+}
+servingsInput.addEventListener("change", () =>
+  changeServings(Number(servingsInput.value)),
+);
+required<HTMLButtonElement>("#decrease-servings").addEventListener(
+  "click",
+  () => changeServings(targetServings - 1),
+);
+required<HTMLButtonElement>("#increase-servings").addEventListener(
+  "click",
+  () => changeServings(targetServings + 1),
+);
+
 localeSelect.addEventListener("change", () => {
   if (localeSelect.value === "en" || localeSelect.value === "fr") {
-    updatePreference("locale", localeSelect.value as Locale);
+    updatePreference("locale", localeSelect.value);
   }
 });
 
@@ -114,12 +350,28 @@ themeSelect.addEventListener("change", () => {
     themeSelect.value === "light" ||
     themeSelect.value === "dark"
   ) {
-    updatePreference("theme", themeSelect.value as ThemePreference);
+    updatePreference("theme", themeSelect.value);
   }
+});
+
+unitsSelect.addEventListener("change", () => {
+  if (unitsSelect.value === "metric" || unitsSelect.value === "imperial")
+    updatePreference("units", unitsSelect.value);
+});
+temporaryButton.addEventListener("click", () => {
+  temporarySession = repository.startTemporarySession();
+  renderMessages();
 });
 
 mediaPreference.addEventListener("change", () => {
   if (appDocument.preferences.theme === "system") applyTheme();
+});
+
+window.addEventListener("storage", (event) => {
+  if (event.key === DOCUMENT_KEY || event.key === null) {
+    repository.storageChanged();
+    renderMessages();
+  }
 });
 
 render();

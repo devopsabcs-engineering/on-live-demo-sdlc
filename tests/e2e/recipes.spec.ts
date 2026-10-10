@@ -1,0 +1,288 @@
+import { expect, test, type Page } from "@playwright/test";
+
+const key = "pinch:v1:document";
+async function fillRecipe(page: Page, title = "My dinner") {
+  await page.locator("#recipe-name").fill(title);
+  await page.locator("#base-servings").fill("4");
+  await page
+    .locator("#ingredient-lines")
+    .fill("250 g flour\n300 ml milk\n2 eggs\nsalt to taste");
+  await page.locator("#step-lines").fill("1. Mix\n2) Bake");
+}
+async function storedBytes(page: Page) {
+  return page.evaluate((documentKey) => localStorage.getItem(documentKey), key);
+}
+
+test("three samples scale from base, convert without drift, and reload without duplicate seeds", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await expect(page.locator("#library button")).toHaveCount(3);
+  await expect(page.locator("#recipe-title")).toHaveText("Pancakes");
+  await expect(page.locator("#recipe-ingredients li").first()).toContainText(
+    "250 g",
+  );
+  await page.locator("#target-servings").fill("8");
+  await page.locator("#target-servings").press("Tab");
+  await expect(page.locator("#recipe-ingredients li").first()).toContainText(
+    "500 g",
+  );
+  await page.locator("#units").selectOption("imperial");
+  await expect(page.locator("#recipe-ingredients li").first()).toContainText(
+    "oz",
+  );
+  await page.locator("#locale").selectOption("fr");
+  await expect(page.locator("#recipe-title")).toHaveText("Crêpes");
+  await expect(page.locator("#target-servings")).toHaveValue("8");
+  await expect(page.locator("#units")).toHaveValue("imperial");
+  await expect(page.locator("#recipe-ingredients li").first()).toContainText(
+    "farine",
+  );
+  await page.locator("#units").selectOption("metric");
+  await expect(page.locator("#recipe-ingredients li").first()).toContainText(
+    "500 g",
+  );
+  await page.locator("#target-servings").fill("1.5");
+  await page.locator("#target-servings").press("Tab");
+  await expect(page.locator("#target-servings")).toHaveValue("8");
+  await expect(page.locator("#target-error")).toContainText("nombre entier");
+  await page.reload();
+  await expect(page.locator("#library button")).toHaveCount(3);
+  await expect(page.locator("#target-servings")).toHaveValue("4");
+  const bytes = await storedBytes(page);
+  expect(bytes).not.toContain("sample-");
+});
+
+test("create, edit and cancel preserve selection and persist exact user content", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.locator("#new-recipe").click();
+  await expect(page.locator("#recipe-name")).toBeFocused();
+  await fillRecipe(page);
+  await page.locator("#recipe-form button[type=submit]").click();
+  await expect(page.locator("#recipe-title")).toHaveText("My dinner");
+  await expect(page.locator("#recipe-steps li")).toHaveText(["Mix", "Bake"]);
+  const before = await storedBytes(page);
+  await page.locator("#edit-recipe").click();
+  await page.locator("#recipe-name").fill("Cancelled change");
+  await page.locator("#cancel-editor").click();
+  await expect(page.locator("#edit-recipe")).toBeFocused();
+  await expect(page.locator("#recipe-title")).toHaveText("My dinner");
+  expect(await storedBytes(page)).toBe(before);
+  await page.locator("#edit-recipe").click();
+  await page.locator("#recipe-name").fill("My supper");
+  await page.locator("#locale").selectOption("fr");
+  await expect(page.locator("#recipe-name")).toHaveValue("My supper");
+  await page.locator("#recipe-form button[type=submit]").click();
+  await expect(page.locator("#library button")).toHaveCount(4);
+  await expect(page.locator("#recipe-title")).toHaveText("My supper");
+  await page.reload();
+  await expect(page.locator("#recipe-title")).toHaveText("Crêpes");
+  await page.getByRole("button", { name: "My supper", exact: true }).click();
+  await expect(page.locator("#recipe-ingredients li").first()).toContainText(
+    "flour",
+  );
+  await expect(page.locator("#recipe-steps li")).toHaveText(["Mix", "Bake"]);
+});
+
+test("editing a sample creates a user copy and cancellation never changes the sample", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.locator("#edit-recipe").click();
+  await page.locator("#recipe-name").fill("Pancake copy");
+  await page.locator("#recipe-form button[type=submit]").click();
+  await expect(page.locator("#library button")).toHaveCount(4);
+  await page.getByRole("button", { name: "Pancakes", exact: true }).click();
+  await expect(page.locator("#recipe-title")).toHaveText("Pancakes");
+  await expect(page.locator("#recipe-ingredients li").first()).toContainText(
+    "250 g",
+  );
+  await page.locator("#new-recipe").click();
+  await fillRecipe(page, "Never saved");
+  await page.locator("#cancel-editor").click();
+  await expect(page.locator("#recipe-title")).toHaveText("Pancakes");
+  await expect(page.locator("#library button")).toHaveCount(4);
+});
+
+test("field errors localize in an open editor, focus invalid fields and preserve raw drafts", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.locator("#new-recipe").click();
+  await page.locator("#recipe-form button[type=submit]").click();
+  await expect(page.locator("#recipe-name")).toBeFocused();
+  await expect(page.locator("#recipe-name")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await page.locator("#locale").selectOption("fr");
+  await expect(page.locator("#title-error")).toContainText("Saisissez");
+  await fillRecipe(page);
+  await page.locator("#base-servings").fill("25");
+  const bytes = await storedBytes(page);
+  await page.locator("#recipe-form button[type=submit]").click();
+  await expect(page.locator("#base-servings")).toBeFocused();
+  expect(await storedBytes(page)).toBe(bytes);
+  await page.locator("#base-servings").fill("4");
+  await page.locator("#ingredient-lines").fill("a".repeat(501));
+  await page.locator("#recipe-form button[type=submit]").click();
+  await expect(page.locator("#ingredient-lines")).toBeFocused();
+  await expect(page.locator("#ingredient-lines")).toHaveValue("a".repeat(501));
+  expect(await storedBytes(page)).toBe(bytes);
+});
+
+test("untrusted user content is literal text, never markup", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.locator("#new-recipe").click();
+  const literal = "<img src=x onerror=alert(1)>";
+  await fillRecipe(page, literal);
+  await page.locator("#ingredient-lines").fill(literal);
+  await page.locator("#step-lines").fill(literal);
+  await page.locator("#recipe-form button[type=submit]").click();
+  await expect(page.locator("#recipe-title")).toHaveText(literal);
+  await expect(page.locator("#recipe-ingredients")).toHaveText(literal);
+  await expect(page.locator("#recipe-steps")).toHaveText(literal);
+  await expect(page.locator("img")).toHaveCount(0);
+  await page.locator("#locale").selectOption("fr");
+  await expect(page.locator("#recipe-title")).toHaveText(literal);
+});
+
+test("quota failures retain preferences, recipe selection, stored bytes and drafts for retry", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.locator("#theme").selectOption("light");
+  const bytes = await storedBytes(page);
+  await page.evaluate(() => {
+    const original = Storage.prototype.setItem;
+    Object.defineProperty(window, "restoreStorage", {
+      value: () => {
+        Storage.prototype.setItem = original;
+      },
+    });
+    Storage.prototype.setItem = () => {
+      throw new DOMException("Full", "QuotaExceededError");
+    };
+  });
+  await page.locator("#theme").selectOption("dark");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("#theme")).toHaveValue("light");
+  await page.locator("#new-recipe").click();
+  await fillRecipe(page);
+  await page.locator("#recipe-form button[type=submit]").click();
+  await expect(page.locator("#status")).toContainText("storage is full");
+  await expect(page.locator("#recipe-title")).toHaveText("Pancakes");
+  await expect(page.locator("#recipe-name")).toHaveValue("My dinner");
+  expect(await storedBytes(page)).toBe(bytes);
+  await page.evaluate(() => {
+    if (
+      "restoreStorage" in window &&
+      typeof window.restoreStorage === "function"
+    )
+      window.restoreStorage();
+  });
+  await page.locator("#recipe-form button[type=submit]").click();
+  await expect(page.locator("#recipe-title")).toHaveText("My dinner");
+});
+
+for (const raw of ["broken-json", '{"schemaVersion":2}']) {
+  test(`retains corrupt/unsupported bytes: ${raw}`, async ({ page }) => {
+    await page.addInitScript(
+      ({ documentKey, bytes }) => localStorage.setItem(documentKey, bytes),
+      { documentKey: key, bytes: raw },
+    );
+    await page.goto("./");
+    await expect(page.locator("#storage-warning")).not.toBeEmpty();
+    await page.locator("#new-recipe").click();
+    await fillRecipe(page);
+    await page.locator("#recipe-form button[type=submit]").click();
+    await expect(page.locator("#editor")).toBeVisible();
+    await expect(page.locator("#library button")).toHaveCount(3);
+    expect(await storedBytes(page)).toBe(raw);
+  });
+}
+
+test("denied storage requires an explicitly unsaved temporary session", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "localStorage", {
+      get: () => {
+        throw new DOMException("Denied", "SecurityError");
+      },
+    });
+  });
+  await page.goto("./");
+  await expect(page.locator("#storage-warning")).toContainText(
+    "storage is unavailable",
+  );
+  await page.locator("#new-recipe").click();
+  await fillRecipe(page);
+  await page.locator("#recipe-form button[type=submit]").click();
+  await expect(page.locator("#library button")).toHaveCount(3);
+  await page.locator("#temporary-session").click();
+  await page.locator("#recipe-form button[type=submit]").click();
+  await expect(page.locator("#recipe-title")).toHaveText("My dinner");
+  await expect(page.locator("#storage-warning")).toContainText(
+    "Temporary session",
+  );
+  await page.reload();
+  await expect(page.locator("#library button")).toHaveCount(3);
+});
+
+test("cross-tab changes block stale writes without losing the draft", async ({
+  page,
+  context,
+}) => {
+  await page.goto("./");
+  await page.locator("#new-recipe").click();
+  await fillRecipe(page);
+  const other = await context.newPage();
+  await other.goto("./");
+  await other.locator("#theme").selectOption("dark");
+  const changedBytes = await storedBytes(other);
+  await expect(page.locator("#storage-warning")).toContainText("another tab");
+  await page.locator("#recipe-form button[type=submit]").click();
+  await expect(page.locator("#recipe-name")).toHaveValue("My dinner");
+  await expect(page.locator("#library button")).toHaveCount(3);
+  expect(await storedBytes(page)).toBe(changedBytes);
+  await other.close();
+});
+
+test("recipe and editor reflow in both languages and themes with keyboard focus", async ({
+  page,
+}) => {
+  await page.goto("./");
+  for (const width of [360, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const locale of ["en", "fr"]) {
+      await page.locator("#locale").selectOption(locale);
+      for (const theme of ["light", "dark"]) {
+        await page.locator("#theme").selectOption(theme);
+        await page.locator("#new-recipe").click();
+        await expect(page.locator("#recipe-name")).toBeFocused();
+        await fillRecipe(page, "X".repeat(200));
+        await page.locator("#recipe-form button[type=submit]").click();
+        const dimensions = await page.evaluate(() => ({
+          client: document.documentElement.clientWidth,
+          scroll: document.documentElement.scrollWidth,
+        }));
+        expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client);
+        await page.locator("#edit-recipe").click();
+        const editorDimensions = await page.evaluate(() => ({
+          client: document.documentElement.clientWidth,
+          scroll: document.documentElement.scrollWidth,
+        }));
+        expect(editorDimensions.scroll).toBeLessThanOrEqual(
+          editorDimensions.client,
+        );
+        await page.locator("#cancel-editor").click();
+        await expect(page.locator("#edit-recipe")).toBeFocused();
+      }
+    }
+  }
+});

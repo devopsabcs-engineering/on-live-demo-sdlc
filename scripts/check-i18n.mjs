@@ -50,6 +50,12 @@ for (const key of new Set([...english.keys(), ...french.keys()])) {
   }
 }
 
+const expectedSamples = ["sample-pancakes", "sample-soup", "sample-salad"];
+if (
+  JSON.stringify(Object.keys(samples).sort()) !==
+  JSON.stringify(expectedSamples.sort())
+)
+  fail("exactly the three reserved samples are required");
 for (const [id, variants] of Object.entries(samples)) {
   if (
     !id.startsWith("sample-") ||
@@ -59,19 +65,66 @@ for (const [id, variants] of Object.entries(samples)) {
     fail(`invalid sample variant "${id}"`);
     continue;
   }
-  for (const locale of ["en", "fr"]) {
+  if (
+    !Number.isInteger(variants.baseServings) ||
+    variants.baseServings < 1 ||
+    variants.baseServings > 24 ||
+    !Array.isArray(variants.ingredients) ||
+    variants.ingredients.length === 0
+  ) {
+    fail(`sample "${id}" has invalid base quantities`);
+    continue;
+  }
+  for (const ingredient of variants.ingredients) {
     if (
-      typeof variants[locale] !== "string" ||
-      variants[locale].trim() === ""
+      !Number.isFinite(ingredient.quantity) ||
+      ingredient.quantity < 0 ||
+      ingredient.quantity > 1_000_000 ||
+      ![
+        null,
+        "g",
+        "kg",
+        "oz",
+        "lb",
+        "ml",
+        "l",
+        "tsp",
+        "tbsp",
+        "cup",
+        "fl-oz",
+      ].includes(ingredient.unit)
+    )
+      fail(`sample "${id}" has an invalid ingredient`);
+  }
+  for (const locale of ["en", "fr"]) {
+    const variant = variants[locale];
+    if (
+      typeof variant !== "object" ||
+      variant === null ||
+      typeof variant.title !== "string" ||
+      variant.title.trim() === "" ||
+      !Array.isArray(variant.names) ||
+      variant.names.length !== variants.ingredients.length ||
+      variant.names.some(
+        (name) => typeof name !== "string" || name.trim() === "",
+      ) ||
+      !Array.isArray(variant.steps) ||
+      variant.steps.length === 0 ||
+      variant.steps.some(
+        (step) => typeof step !== "string" || step.trim() === "",
+      )
     ) {
       fail(`sample "${id}" is missing a nonempty ${locale} variant`);
     }
   }
+  if (variants.en?.steps?.length !== variants.fr?.steps?.length)
+    fail(`sample "${id}" step counts differ`);
   if (
-    Object.keys(variants).some((locale) => locale !== "en" && locale !== "fr")
-  ) {
-    fail(`sample "${id}" contains an unsupported locale`);
-  }
+    Object.keys(variants).some(
+      (key) => !["baseServings", "ingredients", "en", "fr"].includes(key),
+    )
+  )
+    fail(`sample "${id}" contains an unsupported property`);
 }
 
 const sourceFiles = ["src/main.ts", "src/i18n/index.ts", "src/data/samples.ts"];

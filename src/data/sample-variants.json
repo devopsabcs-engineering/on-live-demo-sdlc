@@ -1,14 +1,80 @@
 {
   "sample-pancakes": {
-    "en": "Pancakes",
-    "fr": "Crêpes"
+    "baseServings": 4,
+    "ingredients": [
+      { "quantity": 250, "unit": "g" },
+      { "quantity": 300, "unit": "ml" },
+      { "quantity": 2, "unit": null }
+    ],
+    "en": {
+      "title": "Pancakes",
+      "names": ["flour", "milk", "eggs"],
+      "steps": [
+        "Whisk the flour, milk and eggs until smooth.",
+        "Warm a lightly oiled pan over medium heat.",
+        "Cook each pancake until golden on both sides."
+      ]
+    },
+    "fr": {
+      "title": "Crêpes",
+      "names": ["farine", "lait", "œufs"],
+      "steps": [
+        "Fouetter la farine, le lait et les œufs jusqu'à obtenir une pâte lisse.",
+        "Chauffer une poêle légèrement huilée à feu moyen.",
+        "Cuire chaque crêpe jusqu'à ce que les deux côtés soient dorés."
+      ]
+    }
   },
   "sample-soup": {
-    "en": "Soup",
-    "fr": "Soupe"
+    "baseServings": 4,
+    "ingredients": [
+      { "quantity": 500, "unit": "g" },
+      { "quantity": 1, "unit": "l" },
+      { "quantity": 1, "unit": null }
+    ],
+    "en": {
+      "title": "Soup",
+      "names": ["carrots", "vegetable stock", "onion"],
+      "steps": [
+        "Chop the carrots and onion.",
+        "Simmer the vegetables in the stock until tender.",
+        "Blend until smooth and serve warm."
+      ]
+    },
+    "fr": {
+      "title": "Soupe",
+      "names": ["carottes", "bouillon de légumes", "oignon"],
+      "steps": [
+        "Couper les carottes et l'oignon.",
+        "Faire mijoter les légumes dans le bouillon jusqu'à ce qu'ils soient tendres.",
+        "Mixer jusqu'à obtenir une texture lisse et servir chaud."
+      ]
+    }
   },
   "sample-salad": {
-    "en": "Salad",
-    "fr": "Salade"
+    "baseServings": 2,
+    "ingredients": [
+      { "quantity": 150, "unit": "g" },
+      { "quantity": 2, "unit": null },
+      { "quantity": 2, "unit": "tbsp" }
+    ],
+    "en": {
+      "title": "Salad",
+      "names": ["lettuce", "tomatoes", "olive oil"],
+      "steps": [
+        "Wash and dry the lettuce.",
+        "Slice the tomatoes and combine with the lettuce.",
+        "Dress with olive oil just before serving."
+      ]
+    },
+    "fr": {
+      "title": "Salade",
+      "names": ["laitue", "tomates", "huile d'olive"],
+      "steps": [
+        "Laver et sécher la laitue.",
+        "Couper les tomates et les mélanger à la laitue.",
+        "Ajouter l'huile d'olive juste avant de servir."
+      ]
+    }
   }
 }
