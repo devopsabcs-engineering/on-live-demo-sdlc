@@ -136,7 +136,7 @@ for (const locale of ["en", "fr"] as const) {
 
     test(`field error matrix preserves drafts and focuses each invalid field: ${locale}/${theme}`, async ({
       page,
-    }) => {
+    }, testInfo) => {
       const messages =
         locale === "en"
           ? {
@@ -229,6 +229,11 @@ for (const locale of ["en", "fr"] as const) {
           expect(await storedBytes(page)).toBe(bytes);
           await expect(page.locator("#library button")).toHaveCount(3);
         }
+        await inspectRendered(
+          page,
+          testInfo,
+          `field-error-${locale}-${theme}-${entry.field}`,
+        );
       }
     });
   }

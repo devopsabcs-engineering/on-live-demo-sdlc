@@ -55,6 +55,21 @@ async function renderedStates(page: Page, testInfo: TestInfo, prefix: string) {
   await tabTo(page, "#cook-scroll");
   await inspectRendered(page, testInfo, `${prefix}-cooking-top`);
   await page.keyboard.press("End");
+  await expect
+    .poll(() =>
+      page.locator("#cook-scroll").evaluate((element) => element.scrollTop),
+    )
+    .toBeGreaterThan(0);
+  await expect
+    .poll(() =>
+      page
+        .locator("#cook-scroll")
+        .evaluate(
+          (element) =>
+            element.scrollHeight - element.clientHeight - element.scrollTop,
+        ),
+    )
+    .toBeLessThanOrEqual(1);
   await inspectRendered(page, testInfo, `${prefix}-cooking-scrolled`);
   await expect(page.locator("#cook-current")).toHaveAttribute(
     "aria-live",
