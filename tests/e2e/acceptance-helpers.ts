@@ -216,7 +216,7 @@ export async function inspectRendered(
         dpr: devicePixelRatio,
       },
       language: document.documentElement.lang,
-      theme: document.documentElement.dataset.theme,
+      theme: document.documentElement.dataset["theme"],
       horizontalOverflow: document.documentElement.scrollWidth > innerWidth,
     };
   });
