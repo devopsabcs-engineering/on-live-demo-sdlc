@@ -116,7 +116,7 @@ Out of scope for v1: accounts, sync across devices, importing from URLs, nutriti
 
 \- Production target: GitHub Pages for this repository through a GitHub Actions workflow
 
-&#x20; (`https://devopsabcs-engineering.github.io/ai-sdlc-labs-pinch/`), with the Vite `base` set to `/ai-sdlc-labs-pinch/`.
+&#x20; (`https://devopsabcs-engineering.github.io/on-live-demo-sdlc/`), with the Vite `base` set to `/on-live-demo-sdlc/`.
 
 \- Gates: `design-review`, `prototype-review`, `spec-review`, build, lint, unit, acceptance (e2e), an i18n parity gate,
 

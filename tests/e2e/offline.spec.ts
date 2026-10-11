@@ -5,7 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { createShell, type ShellBundle } from "../../scripts/pwa.mjs";
 import { inspectRendered, tabTo } from "./acceptance-helpers";
 
-const base = "/ai-sdlc-labs-pinch/";
+const base = "/on-live-demo-sdlc/";
 const documentKey = "pinch:v1:document";
 
 async function installed(page: Page, url = "./") {

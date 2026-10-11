@@ -9,7 +9,7 @@ break an existing installed app or interrupt cooking.
 
 ## Decision
 
-Build a local manifest/icons and standalone worker with Vite base `/ai-sdlc-labs-pinch/`.
+Build a local manifest/icons and standalone worker with Vite base `/on-live-demo-sdlc/`.
 Generate the precache list from emitted assets and use a content-hash Pinch cache namespace.
 Install the complete new shell before activation; retain the prior active cache on failure.
 Notify of waiting updates and activate/reload only after explicit acceptance or the browser's

@@ -1,66 +1,62 @@
 ---
-title: T-011 Pinch acceptance QA
-description: PRD acceptance traceability, verified CI evidence, and outstanding acceptance blockers
+title: T-011 Pinch production acceptance QA
+description: Replacement-artifact PRD traceability, cross-platform evidence, and the waived performance evidence gap
 ms.date: 2026-10-10
 ---
 
 ## Verdict
 
-T-011 is blocked. The required `acceptance` gate is failed/incomplete, not passed.
-AC9 has remaining verification gaps; required AC11.1 is skipped because qualifying
-Lighthouse tooling/evidence is absent. No waiver is recorded or requested here.
-AC11.2 also has a known dependency-policy failure for T-013. Release-only criteria
-remain unexecuted, not waived. T-001 through T-010 retain their canonical done status.
+T-011 passes its required `acceptance` gate for exact artifact
+`8769bd3701225916ea76f6ba879a323dd154c029`. Implemented functional,
+responsive, accessibility and cross-cutting criteria are covered by the exact-HEAD CI
+result and retained browser evidence. AC11.1 remains unmeasured and has no Lighthouse
+report, but a real human operator waived only that missing tooling and evidence for this
+artifact. The waiver is not technical proof and is not release sign-off. AC11.2 remains
+assigned to T-013. Release-only criteria remain unexecuted and unwaived.
 
 ## Provenance and execution
 
-- Baseline production source: `7a9b7d7248584b448f03fe5034e28757fbf9a11f`.
-  [CI 38051368325](https://github.com/emmanuelknafo/on-live-demo-sdlc/actions/runs/38051368325)
-  passed Ubuntu/Windows with 124 unit and 53 browser tests each.
-- Validated QA source: `2889f6019f91eeb671f04a938aeeb40c57462362`.
-  [CI 38052236059](https://github.com/emmanuelknafo/on-live-demo-sdlc/actions/runs/38052236059)
-  passed both platform jobs: clean `npm ci`, managed Chromium installation, build,
-  lint/Prettier, 125 unit tests, catalog parity, and 55 browser tests per OS.
-- Recorded runners: `ubuntu-latest` and `windows-latest`, Node `22.23.3`, Playwright
-  `1.63.0`, Chrome for Testing `153.0.8010.12` (Chromium revision `1243`), Vitest
-  `3.2.7`, TypeScript `5.9.3`, Vite `6.4.3`, committed lockfile version 3.
-  Browser tests use the production preview and `/ai-sdlc-labs-pinch/` base.
-- Local focused E2E commands stopped at `'tsc' is not recognized`; the focused
-  unit command stopped at `'vitest' is not recognized`. Catalog parity ran locally
-  and passed with 80 keys and three sample variants. The reported local npm
-  `EALLOWREMOTE` restriction was not bypassed. No dependency install was attempted.
-  Formatting used an already-cached Prettier; authoritative lint passed in CI.
-- The Actions artifact API returned `total_count: 0` for both baseline and final
-  test runs. Evidence consists of verified CI logs and test assertions, not
-  downloadable reports, retained screenshots, a built binary, or Lighthouse output.
-  [CI workflow](../.github/workflows/ci.yml) uploads no artifacts.
-- QA commits `8ecf6a1`, `1695d2b`, and `2889f60` change only three existing test
-  files. Production implementation, dependencies and workflow are unchanged.
-  The subsequent evidence-only commit has the same implementation/test tree;
-  its final SHA and CI result are returned with the handoff.
+* Replacement artifact: `8769bd3701225916ea76f6ba879a323dd154c029` on `main`.
+  Commit `8769bd3` changes documentation only after acceptance-test commit `59ed73d`.
+* [CI 38081390349](https://github.com/devopsabcs-engineering/on-live-demo-sdlc/actions/runs/38081390349)
+  passed the implementation-equivalent `59ed73d` tree on Ubuntu and Windows: clean
+  install, managed Chromium, build, lint/format, 125 unit tests, catalog parity, and
+  88 production-preview browser tests per operating system.
+* [CI 38081411399](https://github.com/devopsabcs-engineering/on-live-demo-sdlc/actions/runs/38081411399)
+  passed the exact replacement HEAD on both operating systems, including install,
+  build, lint/format, unit, catalog parity, browser acceptance, evidence upload,
+  and post-job cleanup.
+* Browser evidence is retained for 14 days by the CI workflow. Tests exercise the
+  built preview under `/ai-sdlc-labs-pinch/`.
+* The local focused run stopped before tests because `tsc` was unavailable. The
+  lockfile-backed restore then failed with `EALLOWREMOTE`; local Node 26.7.0 is also
+  outside the required Node 22 range. No policy bypass or dependency change occurred.
 
 ## Test plan and traceability
 
 The [PRD](../docs/product/prd.md) is the acceptance source, including its requirement
 that UI criteria apply in both languages/themes. C means covered by passing tests
 and targeted source inspection, not exhaustive UI-state or WCAG certification.
-P means only part of the criterion is evidenced; S means skipped and blocking;
-L means later-phase/not run. No unexecuted clause is treated as a pass.
+P means only part of the criterion is evidenced; W means waived without technical
+evidence; L means later-phase/not run. No unexecuted clause is treated as a technical
+pass.
 
 Evidence keys refer to these existing suites:
 
-- Q: [quantity unit tests](../tests/unit/quantities.test.ts)
-- R: [recipe validation unit tests](../tests/unit/recipes.test.ts)
-- D: [repository unit tests](../tests/unit/repository.test.ts)
-- P: [preferences/schema/catalog unit tests](../tests/unit/preferences.test.ts)
-- S: [sample unit tests](../tests/unit/samples.test.ts)
-- C: [cooking unit tests](../tests/unit/cook-session.test.ts)
-- W: [PWA unit tests](../tests/unit/pwa.test.ts)
-- ER: [recipe/shopping browser tests](../tests/e2e/recipes.spec.ts)
-- ES: [shell/accessibility browser tests](../tests/e2e/shell.spec.ts)
-- EC: [cooking browser tests](../tests/e2e/cooking.spec.ts)
-- ET: [transfer browser tests](../tests/e2e/transfer.spec.ts)
-- EW: [offline browser tests](../tests/e2e/offline.spec.ts)
+* Q: [quantity unit tests](../tests/unit/quantities.test.ts)
+* R: [recipe validation unit tests](../tests/unit/recipes.test.ts)
+* D: [repository unit tests](../tests/unit/repository.test.ts)
+* P: [preferences/schema/catalog unit tests](../tests/unit/preferences.test.ts)
+* S: [sample unit tests](../tests/unit/samples.test.ts)
+* C: [cooking unit tests](../tests/unit/cook-session.test.ts)
+* W: [PWA unit tests](../tests/unit/pwa.test.ts)
+* ER: [recipe/shopping browser tests](../tests/e2e/recipes.spec.ts)
+* ES: [shell/accessibility browser tests](../tests/e2e/shell.spec.ts)
+* EC: [cooking browser tests](../tests/e2e/cooking.spec.ts)
+* ET: [transfer browser tests](../tests/e2e/transfer.spec.ts)
+* EW: [offline browser tests](../tests/e2e/offline.spec.ts)
+
+<!-- markdownlint-disable MD060 -->
 
 | Criterion | Status                       | Evidence and limits                                                                                                                                                                                                                                                                                                                                                              |
 | --------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -69,7 +65,7 @@ Evidence keys refer to these existing suites:
 | AC1.3     | C                            | R bounds every field/count and strips only initial numbered prefixes; ER localized errors preserve drafts/bytes and focus invalid fields. Full per-field locale/theme error matrix remains a risk.                                                                                                                                                                               |
 | AC1.4     | C                            | ER, ET and EC display malicious-looking text literally in library, ingredients, steps, shopping and cooking, with no injected elements.                                                                                                                                                                                                                                          |
 | AC2.1     | C                            | Q integer/decimal/comma/fraction/mixed parsing; strengthened ER asserts 500 g, 600 ml, four eggs and half an egg at the specified ratios.                                                                                                                                                                                                                                        |
-| AC2.2     | P                            | Q preserves malformed/range/negative/over-limit raw input and unknown suffixes; renderer inspection shows textContent/no inference. No dedicated EN/FR browser assertion exercises all these unchanged lines after scaling/conversion.                                                                                                                                           |
+| AC2.2     | C                            | Q preserves malformed/range/negative/over-limit input; ER now verifies visible unchanged plain, malformed, range and unknown-count lines in both locales and themes.                                                                                                                                                                                                             |
 | AC2.3     | C                            | Q source immutability and conversion drift checks; ER source-based round trip and invalid-target retention/error.                                                                                                                                                                                                                                                                |
 | AC2.4     | C                            | Q zero, positive tiny values, fractions and comma decimals; ER precision snapshot displays `< 1`; integer-rounding implementation inspected. Not every rounding boundary is explicitly tested.                                                                                                                                                                                   |
 | AC3.1     | C                            | Q documented factors for all mass/volume units and French labels; ER single control converts and restores display.                                                                                                                                                                                                                                                               |
@@ -90,49 +86,40 @@ Evidence keys refer to these existing suites:
 | AC8.1     | C                            | EW Chromium manifest/installability error APIs, decoded 192/512 local PNGs, standalone/base identity and worker scope; W emitted assets. No actual OS install or other-browser run.                                                                                                                                                                                              |
 | AC8.2     | C                            | EW EN/FR built-site offline reload executes all local workflows and checks no third-party requests/page errors after successful installation.                                                                                                                                                                                                                                    |
 | AC8.3     | C                            | W failed installs/activation/claim/namespace/message boundaries; EW real-worker old-shell retention, deferred update, cancelled editor update and accepted cooking update.                                                                                                                                                                                                       |
-| AC9.1     | P                            | ER/EC/EW plus new ES exercise 360/768/1440, both themes/locales, long text, page/dialog overflow and visible control bounds. Actual 200% browser zoom and internal text clipping/overlap are not verified.                                                                                                                                                                       |
-| AC9.2     | P                            | New ES verifies visible control names, 44x44 targets and keyboard create/scale/convert/shop/cook/export/reset-cancel. EC focus containment/fallback and ET transfer targets; skip/headings/associated errors/polite regions inspected. Programmatic focus setup is not full Tab-order proof; import picker, temporary consent and update acceptance lack keyboard-only coverage. |
-| AC9.3     | P                            | New ES measures ten token contrast pairs per theme, checks a visible focus outline and reduced-motion transition; EC real vertical touch scrolling and cooking focus tests. Not every computed state/pair, focus order, visual focus geometry, screen-reader behavior or WCAG 2.1 AA criterion is verified.                                                                      |
+| AC9.1     | C                            | ES runs rendered-state inspection at 360/768/1440 in both locales/themes and a real Chromium 200% browser zoom matrix. It rejects page overflow, clipped text/controls, text overlap, selected-option clipping and unusable scrolled dialog content.                                                                                                                                |
+| AC9.2     | C                            | ES uses Tab traversal and keyboard activation for the workbench workflow, verifies names, 44x44 targets, focus indicators, field-error associations, skip behavior and status semantics; EC verifies modal containment/restoration and keyboard fallback.                                                                                                                         |
+| AC9.3     | C                            | Rendered inspection measures visible text and focus contrast, geometry and occlusion across recipe, shopping, editor-error and cooking states. ES verifies reduced motion; EC verifies focus order/containment/restoration and touch scrolling. This is automated conformance evidence, not assistive-technology certification.                                                   |
 | AC10.1    | C                            | Committed package/config/lockfile and identical clean Node 22 CI installs build strict vanilla TS with managed Chromium, lint and Prettier.                                                                                                                                                                                                                                      |
 | AC10.2    | C                            | Both OS jobs run identical npm scripts; portable config/test paths inspected, including new temporary Node fixtures.                                                                                                                                                                                                                                                             |
 | AC10.3    | C                            | Q/R/D/P/S/C/W and ER/ES/EC/ET/EW cover the required domains and failures, now including automated catalog-negative tests. Coverage does not itself close the partial criteria above.                                                                                                                                                                                             |
-| AC11.1    | S                            | No Lighthouse package/script/workflow or qualifying report. No performance score was measured. Required tooling absent; no waiver.                                                                                                                                                                                                                                               |
-| AC11.2    | P / failed dependency policy | EW base-local requests and local-font inspection support privacy. Every inspected CI install reports two critical issues; explicit zero-high/critical npm audit, secret/SAST and privacy review are not established. T-013 owns follow-up.                                                                                                                                       |
+| AC11.1    | W                            | No Lighthouse package/script/workflow or qualifying report exists, and no performance score was measured. The recorded human waiver applies only to this missing evidence for exact artifact `8769bd3701225916ea76f6ba879a323dd154c029`; it is not a technical pass or release approval.                                                                                         |
+| AC11.2    | L / T-013                    | EW base-local requests and local-font inspection support privacy. Every inspected CI install reports two critical issues; explicit zero-high/critical npm audit, secret/SAST and privacy review are not established. The PRD and canonical task assignment place this criterion in T-013, so it remains unresolved rather than passing under T-011.                              |
 | AC11.3    | L                            | Only CI push/PR workflow exists, no Pages release workflow. Manual governance-input rejection, real exact-artifact approvals, pre-deploy/smoke/rollback remain T-014/T-015 work. No deploy executed.                                                                                                                                                                             |
 | AC11.4    | C base / L release           | EW verifies production base paths; destination identity is not verified and belongs to T-015. Historical no-push wording is not retroactively re-gated: canonical build tasks are done and QA pushes were explicitly authorized.                                                                                                                                                 |
 
-## Findings and unblock requirements
+<!-- markdownlint-enable MD060 -->
 
-1. AC11.1 is a blocking evidence/tooling gap at [package scripts](../package.json)
-   and [CI](../.github/workflows/ci.yml). A qualifying built-site mobile Lighthouse
-   run must record Chromium, 360x800 viewport, simulated 1.6 Mbps down/750 Kbps up,
-   150 ms latency, 4x CPU slowdown, cold cache, score >= 0.90, tool version,
-   machine and report. Existing Chromium tests are not a performance proxy.
-   Under the repo-only tooling restriction, this cannot be completed here.
-2. AC9.1-AC9.3 remain blocking partial verification at ES/ER/EC and
-   [styles](../src/styles.css). Complete actual 200% browser-zoom and visual
-   clipping/reflow checks, full keyboard action/focus order checks, and WCAG AA
-   review of rendered states and assistive-technology semantics. Do not label
-   token checks or viewport resizing as complete accessibility certification.
-3. AC11.2 dependency policy is contradicted by both baseline and final test CI
+## Findings and phase boundaries
+
+1. AC11.1 has no repository-native Lighthouse dependency, script or CI step, and no
+  qualifying report exists. No score was measured. The operator quote, "go ahead and
+  approve/unblock blocker and continue the work", waives only this missing tooling and
+  report for the exact artifact. Existing Chromium tests remain non-equivalent, and the
+  waiver does not assert the required score.
+2. AC11.2 dependency policy is contradicted by the committed lockfile audit
    install logs: `3 vulnerabilities (1 moderate, 2 critical)`. The
    [lockfile](../package-lock.json) has not changed. Package/advisory identities
    and an explicit npm audit report were not retrieved; do not guess them.
    T-013 must investigate and resolve/revalidate the committed dependency set,
    then complete secret/SAST/privacy evidence. CI currently does not gate audit.
-4. AC2.2's visible negative-input behavior and the full bilingual/theme field-error
-   matrix remain focused acceptance gaps in ER. Add targeted UI assertions using
-   existing Playwright tooling before claiming every implemented clause passes.
-5. CI report retention is absent, not an acceptance waiver. EC creates screenshots
-   on ephemeral runners, but no upload step retains them; a human visual review
-   cannot be inferred from successful screenshot creation.
+3. AC11.3 and the destination-identity portion of AC11.4 are release-only. T-014
+  owns exact-artifact human approval; T-015 owns destination verification,
+  pre-deploy, smoke and rollback-ready. They were not run or waived by T-011.
 
-No new production defect was established by the added tests. Run
-[38052058244](https://github.com/emmanuelknafo/on-live-demo-sdlc/actions/runs/38052058244)
-failed identically on both OSes because the new assertion expected concatenated
-DOM text `4 eggs` while the existing renderer uses separate spans (`4eggs` in
-textContent, visually spaced by CSS). The test was corrected to assert amount/name
-spans, not the implementation. Final CI passed, including the half-egg assertion.
+No production defect was established by the added acceptance tests. The replacement
+artifact is functionally acceptance-covered. Missing performance evidence is accepted
+only through the recorded artifact-specific waiver and cannot be inferred from passing
+browser tests.
 
 ## Scope and handoff
 
@@ -143,7 +130,7 @@ the orchestrator alone decides canonical state updates and rework routing.
 
 ### Gates - T-011
 
-- acceptance: failed (incomplete AC9; AC11.1 skipped without waiver)
+* acceptance: passed (AC11.1 evidence gap waived for the exact artifact; no score measured)
 
-Verdict: FAIL. Return to the orchestrator with scoped QA rework; route dependency
-findings to T-013 without claiming its security gate ran or advancing to release.
+Verdict: PASS. Route the artifact to T-012 critic review. T-013 still owns AC11.2;
+T-014 and T-015 remain responsible for human sign-off and release gates.

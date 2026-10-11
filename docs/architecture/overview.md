@@ -204,7 +204,7 @@ late requests are released if cooking already ended. No gesture is needed to com
 
 ## Offline shell and hosting
 
-Vite `base` is `/ai-sdlc-labs-pinch/`. Manifest `id`, `scope` and `start_url` use that prefix;
+Vite `base` is `/on-live-demo-sdlc/`. Manifest `id`, `scope` and `start_url` use that prefix;
 icon/script/style URLs are base-relative, never origin-root assumptions. Register the worker
 at the base URL with matching scope. Root navigation only; no client router or server rewrite.
 A Node build helper compiles the worker and supplies the actual emitted asset list (including
@@ -263,10 +263,9 @@ No backend specialist is needed because the app has no backend.
 Later QA, critic and security tasks must precede human sign-off. After all three approvers
 approve the exact artifact, prepare a manual Pages workflow with a boolean
 `governance_approved` input, artifact validation and pre-deploy/smoke/rollback-ready checks.
-Never embed secrets or infer approval from that input alone. The brief points at
-`devopsabcs-engineering/ai-sdlc-labs-pinch`, while this checkout is
-`emmanuelknafo/on-live-demo-sdlc`; release must resolve destination permissions/identity.
-Do not silently deploy to either repository with the other's base.
+Never embed secrets or infer approval from that input alone. The verified production destination
+is `devopsabcs-engineering/on-live-demo-sdlc`, with Pages base `/on-live-demo-sdlc/`; the workflow
+must verify the approved commit and tree before packaging the tested artifact.
 
 Roll back by redeploying the last approved immutable static artifact, retaining schema v1 and
 using a new cache identity. Later smoke verifies correct base, manifest, offline reload and
