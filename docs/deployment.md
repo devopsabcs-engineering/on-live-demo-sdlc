@@ -10,11 +10,14 @@ uploads an immutable Pages artifact and deploys through `actions/deploy-pages`.
 ## Deploy
 
 1. Obtain Product Owner, Security Team and Tech Lead approval for a pinned commit and tree.
-2. Confirm the approved tree matches the tree on `main`.
-3. Confirm GitHub Pages uses the GitHub Actions workflow source.
-4. Dispatch `.github/workflows/pages.yml` from `main` with `governance_approved=true`, the
+2. Record each pin as a full 40-character lowercase Git object ID and confirm the approved tree
+   is the tree owned by the approved commit.
+3. Merge without squash or rebase, then confirm the approved commit is an ancestor of `main`
+   and the approved tree exactly matches the tree on `main`.
+4. Confirm GitHub Pages uses the GitHub Actions workflow source.
+5. Dispatch `.github/workflows/pages.yml` from `main` with `governance_approved=true`, the
    approved commit SHA and the approved Git tree SHA.
-5. Verify HTTP 200, manifest and service-worker scope, repository-prefixed assets, no
+6. Verify HTTP 200, manifest and service-worker scope, repository-prefixed assets, no
    third-party requests, zero browser errors and an offline reload.
 
 ## Rollback
