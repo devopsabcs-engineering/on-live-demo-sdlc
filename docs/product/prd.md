@@ -31,8 +31,9 @@ The prototype is disposable and must not become the production entry point.
   A first-ever offline visit cannot install the app.
 - T-002's required browser gate is still blocked. The user authorized this documentation step
   only; build must wait for T-002 to pass. No browser validation or governance waiver is implied.
-- The brief's Pages destination differs from this checkout's repository identity. Preserve
-  its `/ai-sdlc-labs-pinch/` base contract, but verify owner/repository before release; see ADR-007.
+- The verified production destination is
+   `https://devopsabcs-engineering.github.io/on-live-demo-sdlc/`; use
+   `/on-live-demo-sdlc/` as the Pages base; see ADR-007.
 
 ## Numbered requirements and acceptance criteria
 
@@ -185,8 +186,9 @@ Unless specified otherwise, UI criteria apply in both languages and themes.
    `governance_approved`; this input never substitutes for real Product Owner,
    Security Team and Tech Lead approval of the exact artifact. Pre-deploy, smoke and
    rollback-ready pass before a release is considered complete.
-4. **AC11.4:** Production paths work under `/ai-sdlc-labs-pinch/`; destination identity
-   is verified before release. No push/deploy occurs in T-003 or any build slice.
+4. **AC11.4:** Production paths work under `/on-live-demo-sdlc/`; destination identity is
+   `devopsabcs-engineering/on-live-demo-sdlc`. No push/deploy occurs before exact-artifact
+   approval.
 
 ## Build backlog and traceability
 

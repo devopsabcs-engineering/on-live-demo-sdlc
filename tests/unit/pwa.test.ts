@@ -8,7 +8,7 @@ import {
 } from "../../scripts/pwa.mjs";
 import { OfflineShell } from "../../src/offline";
 
-const base = "/ai-sdlc-labs-pinch/";
+const base = "/on-live-demo-sdlc/";
 const origin = "https://pinch.test";
 function bundle(content = "shell"): ShellBundle {
   return {

@@ -10,7 +10,7 @@ export default defineConfig({
   ],
   use: {
     viewport: { width: 1280, height: 720 },
-    baseURL: "http://127.0.0.1:4173/ai-sdlc-labs-pinch/",
+    baseURL: "http://127.0.0.1:4173/on-live-demo-sdlc/",
     locale: "en-US",
     headless: true,
     screenshot: "only-on-failure",
@@ -18,7 +18,7 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run preview -- --host 127.0.0.1 --port 4173 --strictPort",
-    url: "http://127.0.0.1:4173/ai-sdlc-labs-pinch/",
+    url: "http://127.0.0.1:4173/on-live-demo-sdlc/",
     reuseExistingServer: !process.env["CI"],
     timeout: 30_000,
   },
